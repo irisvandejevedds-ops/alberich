@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Alberich: Accounts{% endblock %}
+{% block body %}
+<h1>Accounts</h1>
+<p class="muted">The accounts Alberich should expect statements from. "Partner's" is only a label; nothing about your partner is stored beyond that.</p>
+{% macro fields(a) %}
+<div class="grid2">
+  <label class="f">Name<input type="text" name="name" required maxlength="60" value="{{ a.name if a else '' }}" placeholder="Everyday chequing"></label>
+  <label class="f">Institution<input type="text" name="institution" maxlength="60" value="{{ a.institution if a else '' }}" placeholder="Your bank"></label>
+  <label class="f">Type<select name="type">{% for v, l in types %}<option value="{{ v }}"{% if a and a.type == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label class="f">Whose<select name="owner">{% for v, l in owners %}<option value="{{ v }}"{% if a and a.owner == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label class="f">Last four digits<span class="hint">Lets Alberich tell similar accounts apart.</span><input type="text" inputmode="numeric" name="last4" maxlength="4" value="{{ a.last4 if a else '' }}"></label>
+  <label class="f">Statement closes on day<span class="hint">Leave blank for the last day of the month.</span><input type="number" min="1" max="31" name="cycle_day" value="{{ a.cycle_day if a and a.cycle_day else '' }}"></label>
+  <label class="f">Track from<span class="hint">Earlier months are not asked for.</span><input type="month" name="track_from" value="{{ a.track_from if a and a.track_from else default_from }}"></label>
+</div>
+<label class="check"><input type="checkbox" name="require_pdf"{% if a and a.require_pdf %} checked{% endif %}>Only the PDF statement counts (a CSV alone is "unverified")</label>
+{% endmacro %}
+{% for a in rows %}
+<form class="card {% if not a.active %}aged{% endif %}" method="post" action="/ledgers/accounts/save" data-guard="{{ a.n_statements }}"{% if not a.active %} style="opacity:.65"{% endif %}>
+  <input type="hidden" name="id" value="{{ a.id }}">
+  <div class="cardhead"><h3>{{ a.name }} {% if not a.active %}<span class="chip line">archived</span>{% endif %}</h3></div>
+  {{ fields(a) }}
+  <div class="row"><button class="btn" type="submit">Save</button>
+    <button class="btn ghost" type="submit" formaction="/ledgers/accounts/archive" name="archive" value="{{ 0 if not a.active else 1 }}">{{ "Restore" if not a.active else "Archive" }}</button></div>
+</form>
+{% endfor %}
+<form class="card" method="post" action="/ledgers/accounts/save">
+  <h3>Add an account</h3>
+  {{ fields(none) }}
+  <button class="btn" type="submit">Add account</button>
+</form>
+{% endblock %}

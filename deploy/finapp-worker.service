@@ -1,0 +1,29 @@
+[Unit]
+Description=Alberich worker (notification ticks, snapshots, OCR jobs)
+After=network.target
+
+[Service]
+User=finapp
+Group=finapp
+EnvironmentFile=/etc/finapp/finapp.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+WorkingDirectory=/opt/finapp/app
+ExecStart=/opt/finapp/venv/bin/python -m finapp.worker
+Restart=always
+RestartSec=5
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/finapp
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+MemoryMax=900M
+
+[Install]
+WantedBy=multi-user.target

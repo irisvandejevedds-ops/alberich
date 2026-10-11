@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Receipts{% endblock %}
+{% block body %}
+<h1>The Receipts</h1>
+<p class="muted">Photograph a receipt, or drop one here. Alberich reads every line, checks the sums, and finds the bank charge it belongs to, so each item can be split on its own.</p>
+{% if not tool %}<div class="error">The text reader (tesseract) is not installed on the host, so pictures cannot be read.</div>{% endif %}
+<div class="card" data-rdrop>
+  <h3>Add receipts</h3>
+  <div class="row">
+    <label class="btn" for="r-cam">Take a photo</label><input id="r-cam" type="file" accept="image/*" capture="environment" hidden>
+    <label class="btn ghost" for="r-files">Choose files</label><input id="r-files" type="file" accept="image/*,application/pdf" multiple hidden>
+  </div>
+  <p class="small muted" style="margin-top:12px">Lay it flat in good light with the whole receipt in frame. Several at once is fine. Without a connection the photo waits on your phone and goes through when you are back in range.</p>
+  <ul class="results" id="r-results" aria-live="polite"></ul>
+</div>
+<p class="small" id="r-busy" {% if not busy %}hidden{% endif %}>Alberich is squinting at {{ busy }} receipt{{ 's' if busy != 1 }}&hellip; this page will refresh itself.</p>
+<div class="card panel"><h3>On the desk</h3>
+{% for r in rows %}
+<a class="rowcard" href="/receipts/{{ r.id }}">
+  <span class="chip {{ chip[r.status][0] }}">{{ chip[r.status][1] }}</span>
+  <span><strong>{{ r.merchant or r.original_name }}</strong> <span class="muted">{{ r.purchase_date or '' }}{% if r.total_cents is not none %} · {{ money(r.total_cents) }}{% endif %}</span>
+    <br><span class="small muted">{% if r.tdesc %}Matched to {{ r.tdesc }}{% elif r.status in ('queued','processing') %}In the queue{% elif r.note %}{{ r.note[:140] }}{% elif r.status == 'parsed' %}No bank charge yet. It will match when the statement arrives.{% endif %}</span></span>
+</a>
+{% else %}<p class="muted">No receipts yet.</p>{% endfor %}
+</div>
+{% if busy %}<script src="/static/receipts-poll.js" defer></script>{% endif %}
+{% endblock %}

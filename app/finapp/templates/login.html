@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% set bare = True %}
+{% block title %}Alberich: the gate{% endblock %}
+{% block body %}
+<div class="login">
+  <div class="stage" id="stage" data-mood="annoyed" style="display:inline-block">{{ svg|safe }}</div>
+  <h1 style="margin-top:16px">{% if mode == "setup" %}Name your passphrase{% else %}Who approaches the hoard?{% endif %}</h1>
+  <p class="muted">{% if mode == "setup" %}The first visit sets the passphrase that guards the vault. Ten characters or more.{% else %}Speak the passphrase.{% endif %}</p>
+  <form class="card" method="post" action="/{{ 'setup' if mode == 'setup' else 'login' }}">
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="f">Passphrase<input type="password" name="passphrase" autocomplete="{{ 'new-password' if mode == 'setup' else 'current-password' }}" required autofocus></label>
+    {% if mode == "setup" %}<label class="f">Again<input type="password" name="confirm" autocomplete="new-password" required></label>{% endif %}
+    <button class="btn" type="submit">{% if mode == "setup" %}Seal the vault{% else %}Enter{% endif %}</button>
+  </form>
+</div>
+{% endblock %}

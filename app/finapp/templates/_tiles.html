@@ -1,0 +1,8 @@
+<div class="tiles">
+{% for t in tiles %}
+  <button class="tile" type="button" data-id="{{ t.id }}" data-status="{{ t.status }}">
+    <i class="gem"></i><span class="ico">{{ pxicon(t.icon, 32) }}</span><span class="nm">{{ t.name }}</span>
+    <span class="cnt">{{ t.remaining }}/{{ t.allotted }}</span><span class="lbl">{{ t.label }}</span>
+  </button>
+{% endfor %}
+</div>

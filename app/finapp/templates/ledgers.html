@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Ledgers{% endblock %}
+{% block body %}
+{% if request.query_params.get('reread') %}<div class="notice">Read {{ request.query_params.get('reread') }} statement{{ 's' if request.query_params.get('reread') != '1' }} again; {{ request.query_params.get('changed') or 0 }} came out differently.</div>{% endif %}
+<h1>The Ledgers</h1>
+<p class="muted">Feed Alberich your bank statements, once a month. He reads them, files them, and checks that the sums add up.</p>
+{% if request.query_params.get('shared') %}<div class="notice">Received {{ request.query_params.get('shared') }} shared file(s); {{ request.query_params.get('ok') }} filed cleanly. Anything else is listed below.</div>{% endif %}
+
+<div class="card" id="drop" data-drop>
+  <h3>Drop statements here</h3>
+  <p class="small muted">PDF, CSV, or OFX/QFX. Drag files onto this slab, or choose them. Several at once is fine. A statement Alberich does not recognise waits for you to teach him its layout, once.</p>
+  <label class="f">These files belong to<select id="drop-acct"><option value="">Work it out from the file</option>
+    {% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}{% if a.last4 %} ({{ a.last4 }}){% endif %}</option>{% endfor %}</select></label>
+  <div class="row"><label class="btn" for="drop-input">Choose files</label>
+    <input id="drop-input" type="file" multiple accept=".pdf,.csv,.ofx,.qfx,application/pdf,text/csv" hidden></div>
+  <ul class="results" id="drop-results" aria-live="polite"></ul>
+</div>
+
+{% if not accounts %}
+<div class="notice"><strong>No accounts yet.</strong> Add the accounts you want tracked so Alberich knows which statements are owed.
+  <a href="/ledgers/accounts">Add accounts</a></div>
+{% endif %}
+
+{% if attention %}
+<div class="card aged panel"><h3>Needs you</h3>
+{% for s in attention %}
+<a class="rowcard" href="/statements/{{ s.id }}">
+  <span class="chip {{ chip[s.status][0] }}">{{ chip[s.status][1] }}</span>
+  <span><strong>{{ s.original_name }}</strong>{% if s.acct %} <span class="muted">for {{ s.acct }}</span>{% endif %}<br><span class="small muted">{{ s.note }}</span></span>
+</a>
+{% endfor %}
+</div>
+{% endif %}
+
+<div class="card"><div class="cardhead"><h3>Statements owed</h3><a class="small" href="/ledgers/accounts">Accounts</a></div>
+{% if rows %}
+<p class="small muted">{% if summary.missing or summary.review or summary.soon %}
+  {% if summary.missing %}<strong>{{ summary.missing }}</strong> missing. {% endif %}{% if summary.review %}<strong>{{ summary.review }}</strong> need a look. {% endif %}{% if summary.soon %}<strong>{{ summary.soon }}</strong> due soon.{% endif %}
+  {% else %}Every statement that is due has been filed.{% endif %}
+  A month is covered by the statement that closes in it.</p>
+<div class="tscroll"><table class="t matrix"><thead><tr><th>Account</th>{% for c in cols %}<th>{{ short(c) }}</th>{% endfor %}</tr></thead><tbody>
+  {% for r in rows %}<tr><td class="acctcell"><strong>{{ r.account.name }}</strong><br><span class="small muted">{{ r.account.institution }}{% if r.account.owner != 'me' %} · {{ r.account.owner }}{% endif %}</span></td>
+    {% for c in r.cells %}<td>{% if c.statement_id %}<a class="cell {{ c.status }}" href="/statements/{{ c.statement_id }}">{{ c.label }}</a>{% else %}<span class="cell {{ c.status }}">{{ c.label }}</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}
+</tbody></table></div>
+{% else %}<p class="muted">Nothing tracked yet.</p>{% endif %}
+</div>
+
+{% if recent %}
+<div class="card panel"><h3>Recently filed</h3>
+{% for s in recent %}<a class="rowcard" href="/statements/{{ s.id }}"><span class="chip {{ chip[s.status][0] }}">{{ chip[s.status][1] }}</span>
+  <span><strong>{{ s.acct }}</strong> <span class="muted">{{ s.period_start }} to {{ s.period_end }} · {{ s.txn_count }} lines</span></span></a>{% endfor %}
+</div>
+{% endif %}
+
+<form class="card aged" method="post" action="/ledgers/reread-all" data-busy="Reading every statement again with the latest fixes. This can take a minute.">
+  <h3>Read everything again</h3>
+  <p class="small muted">Alberich keeps getting better at reading statements. This reads every filed statement again, so older ones pick up the improvements. Your Review decisions are kept.</p>
+  <button class="btn ghost" type="submit">Read all statements again</button>
+</form>
+{% endblock %}

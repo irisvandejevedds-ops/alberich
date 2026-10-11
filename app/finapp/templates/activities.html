@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Purse{% endblock %}
+{% macro picker(cur) %}
+<fieldset class="picker"><legend class="label">Picture</legend>
+  {% for k in picker_icons %}<label class="pick"><input type="radio" name="icon" value="{{ k }}"{% if cur == k or (not cur and loop.first) %} checked{% endif %}><span>{{ pxicon(k, 32) }}</span></label>{% endfor %}
+</fieldset>
+{% endmacro %}
+{% macro usescard(tab) %}
+<div class="card" id="uses">
+  <h3>Credits used</h3>
+  <p class="small muted">Logged one by one{% if tab == 'plan' %}, across every pouch{% endif %}. Tap Undo to give a credit back if you fat-fingered it; Restore puts it back.</p>
+  {% if not uses %}<p class="small muted">Nothing logged in the last 45 days.</p>{% else %}
+  <div class="uses">{% for u in uses %}
+  <form class="use{% if u.undone_at %} gone{% endif %}" method="post" action="/activities/log-undo">
+    <input type="hidden" name="id" value="{{ u.id }}"><input type="hidden" name="back" value="/activities?tab={{ tab }}#uses">
+    <span class="uic">{{ pxicon(u.icon, 24) }}</span>
+    <span class="utx"><strong>{{ u.name }}</strong><br><span class="small muted">{{ u.when }}{% if u.undone_at %} · undone{% endif %}</span></span>
+    {% if u.undone_at %}<button class="btn ghost" type="submit" name="restore" value="1">Restore</button>
+    {% else %}<button class="btn ghost" type="submit">Undo</button>{% endif %}
+  </form>{% endfor %}</div>{% endif %}
+</div>
+{% endmacro %}
+{% block body %}
+<h1>The Purse</h1>
+<p class="muted">The spendings that drain you, as counts per month. Pick one below to adjust it.</p>
+<nav class="tabs" aria-label="Purse sections">
+  <a class="tab{% if tab == 'plan' %} on{% endif %}" href="/activities?tab=plan">{{ pxicon('coins', 32) }}<span>Plan</span></a>
+  {% for r in rows %}<a class="tab{% if tab == r.row.id|string %} on{% endif %}{% if r.row.archived %} dim{% endif %}" href="/activities?tab={{ r.row.id }}"{% if tab == r.row.id|string %} aria-current="page"{% endif %}>{{ pxicon(r.row.icon, 32) }}<span>{{ r.row.name }}</span></a>{% endfor %}
+  <a class="tab{% if tab == 'new' %} on{% endif %}" href="/activities?tab=new">{{ pxicon('plus', 32) }}<span>Add</span></a>
+</nav>
+{% if tab == 'plan' %}
+<div class="card" id="derived">
+  <h3>How the credits are worked out ({{ month }})</h3>
+  <p class="small muted">A pouch tied to a category gets a share of that category's aim from <a href="/treasury">the Treasury</a>, divided by what one credit costs. Credits update on their own when a statement is filed, and purchases the statements show for this month use them up. The month starts fresh on the 1st. Untick "set credits automatically" on a pouch to choose its credits yourself.</p>
+  {% set loose = rows|selectattr('row.archived', 'equalto', 0)|rejectattr('row.category_id')|list %}
+  {% if loose %}<div class="notice"><strong>{{ loose|length }} pouch{{ 'es' if loose|length != 1 }} ha{{ 've' if loose|length != 1 else 's' }} no category yet</strong>, so {{ 'their' if loose|length != 1 else 'its' }} credits cannot follow your spending. Pick one in the table below and press Save categories.</div>{% endif %}
+  <form method="post" action="/activities/categories">
+  <div class="prows">
+  {% for r in rows if not r.row.archived %}{% set d = derived.get(r.row.id) %}{% set st = states.get(r.row.id) %}
+  <div class="prow">
+    <div class="phead">{{ pxicon(r.row.icon, 22) }}<a href="/activities?tab={{ r.row.id }}"><strong>{{ r.row.name }}</strong></a>
+      <span class="pcr"><strong>{{ r.row.credits_per_month }}</strong> credit{{ 's' if r.row.credits_per_month != 1 }} <span class="small muted">{{ 'automatic' if r.row.auto_credits and r.row.category_id else 'by hand' }}</span></span></div>
+    <div class="small pline">{{ money(r.row.estimate_cents) if r.row.estimate_cents else 'set a cost' }} each
+      &middot; {% if d %}{{ d.category }} aim {{ money(d.target) }} a month{% elif r.row.category_id %}no spending in its category yet{% else %}no category{% endif %}
+      {% if st %}&middot; used {{ st.used }} of {{ st.allotted }}{% if st.used > st.allotted %} (<strong class="neg">{{ st.allotted - st.used }} left</strong>){% endif %}{% if st.from_statements %} ({{ st.from_statements }} from statements){% endif %}{% endif %}</div>
+    {% set ov = over.get(r.row.id, []) %}{% set runs = ov|selectattr('over')|list %}
+    {% if runs %}<div class="small pline"><span class="chip red">ran over</span> {% for o in runs %}{{ o.over }} over in {{ o.month }} ({{ o.used }} used of {{ o.allotted }}){{ '; ' if not loop.last }}{% endfor %}. That is a sign it may need more credits, or a higher cost each.</div>{% endif %}
+    {% if not r.row.category_id %}<label class="pcat">Category <select name="cat_{{ r.row.id }}" aria-label="Category for {{ r.row.name }}"><option value="">Choose&hellip;</option>{% for c in cats %}<option value="{{ c.id }}"{% if guess.get(r.row.id) == c.id %} selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></label>{% endif %}
+  </div>
+  {% endfor %}
+  </div>
+  {% if loose %}<button class="btn" type="submit">Save categories</button>{% endif %}
+  </form>
+</div>
+
+{{ usescard('plan') }}
+{% endif %}
+
+{% for r in rows if tab == r.row.id|string %}
+<form class="card {% if r.row.archived %}aged{% endif %}" method="post" action="/activities/save" {% if r.row.archived %}style="opacity:.65"{% endif %}>
+  <input type="hidden" name="id" value="{{ r.row.id }}">
+  <div class="cardhead"><h3>{{ pxicon(r.row.icon, 24) }} {{ r.row.name }} {% if r.row.archived %}<span class="chip line">archived</span>{% endif %}</h3></div>
+  {{ picker(r.row.icon) }}
+  <div class="grid2">
+    <label class="f">Name<input type="text" name="name" value="{{ r.row.name }}" required maxlength="60"></label>
+    <label class="f">Phrase for notifications<span class="hint">"Alberich says: you may ___ this week."</span><input type="text" name="phrase" value="{{ r.row.phrase }}" maxlength="80"></label>
+    <label class="f">Typical cost, your share ($)<span class="hint">He adjusts this from your statements later.</span><input type="number" step="0.01" min="0" name="estimate" value="{{ r.estimate }}"></label>
+    <label class="f">Weight (1 to 5)<select name="weight">{% for w in range(1, 6) %}<option value="{{ w }}"{% if w == r.row.weight %} selected{% endif %}>{{ w }}</option>{% endfor %}</select></label>
+    <label class="f">Credits per month<span class="hint">Only used when automatic is off below.</span><input type="number" min="0" max="60" name="credits" value="{{ r.row.credits_per_month }}"></label>
+    <label class="f">Rhythm<select name="mode"><option value="even"{% if r.cad.mode == "even" %} selected{% endif %}>Spread evenly</option><option value="weekdays"{% if r.cad.mode == "weekdays" %} selected{% endif %}>Only on chosen days</option></select></label>
+    <label class="f">Unlocks at<input type="time" name="time" value="{{ r.cad.time }}"></label>
+  </div>
+  <div class="label">Days (for "only on chosen days")</div>
+  <div class="dows">{% for d in days %}<label><input type="checkbox" name="dow" value="{{ loop.index0 }}"{% if loop.index0 in r.cad.dows %} checked{% endif %}>{{ d }}</label>{% endfor %}</div>
+  <label class="check"><input type="checkbox" name="notify"{% if r.cad.notify %} checked{% endif %}>Alberich may announce when a credit unlocks</label>
+  <label class="check"><input type="checkbox" name="auto"{% if r.row.auto_credits %} checked{% endif %}>Set credits automatically from my spending in the category below</label>
+  <label class="f">Counts toward the category<span class="hint">Its credits come from this category's spending, and purchases in it use them up.</span>
+    <select name="category_id"><option value="">None</option>{% for c in cats %}<option value="{{ c.id }}"{% if c.id == r.row.category_id %} selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></label>
+  <div class="row"><button class="btn" type="submit">Save</button>
+    <button class="btn ghost" type="submit" formaction="/activities/archive" name="archive" value="{{ 0 if r.row.archived else 1 }}">{{ "Restore" if r.row.archived else "Archive" }}</button></div>
+  <p class="small muted" style="margin:10px 0 0">Changing credits re-spreads this month's unlock times. Logs already made are kept.</p>
+</form>
+{{ usescard(r.row.id) }}
+{% endfor %}
+
+
+{% if tab == 'new' %}
+<form class="card" method="post" action="/activities/save">
+  <h3>Add a spending</h3>
+  {{ picker('') }}
+  <div class="grid2">
+    <label class="f">Name<input type="text" name="name" required maxlength="60" placeholder="Concert tickets"></label>
+    <label class="f">Phrase<span class="hint">"Alberich says: you may ___ this week."</span><input type="text" name="phrase" maxlength="80" placeholder="go to a show"></label>
+    <label class="f">Typical cost ($)<input type="number" step="0.01" min="0" name="estimate" value="0.00"></label>
+    <label class="f">Weight (1 to 5)<select name="weight"><option>3</option><option>1</option><option>2</option><option>4</option><option>5</option></select></label>
+    <label class="f">Credits per month<span class="hint">Only used if you turn automatic off.</span><input type="number" min="0" max="60" name="credits" value="0"></label>
+  </div>
+  <label class="f">Counts toward the category<span class="hint">Its credits come from this category's spending, and purchases in it use them up.</span>
+    <select name="category_id"><option value="">None</option>{% for c in cats %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></label>
+  <label class="check"><input type="checkbox" name="auto" checked>Set credits automatically from my spending in that category</label>
+  <input type="hidden" name="mode" value="even"><input type="hidden" name="time" value="09:00"><input type="hidden" name="notify" value="on">
+  <button class="btn" type="submit">Add</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Ravens{% endblock %}
+{% block body %}
+<h1>The Ravens</h1>
+<p class="muted">How and when Alberich sends word to this phone.</p>
+
+<div class="card">
+  <h3>This device</h3>
+  <p id="push-status" class="muted">Checking...</p>
+  <div class="row">
+    <button class="btn" type="button" data-act="enable-push">Allow ravens on this phone</button>
+    <button class="btn ghost" type="button" data-act="test-push">Send a test raven</button>
+  </div>
+  <details class="fold" style="margin-top:12px"><summary>Android checklist</summary>
+    <ol class="small"><li>Install Alberich from Chrome's menu (Install app).</li><li>Allow notifications when asked.</li>
+    <li>In Android settings, set Chrome's battery usage to unrestricted so ravens arrive with the app closed.</li><li>Press "Send a test raven".</li></ol></details>
+  {% if subs %}<div class="tscroll" style="margin-top:12px"><table class="t"><thead><tr><th>Device</th><th>Last delivery</th><th></th></tr></thead><tbody>
+    {% for s in subs %}<tr><td class="small">{{ (s.user_agent or "")[:46] }}</td><td>{{ s.last_success_at or "never" }}</td>
+      <td>{% if s.active %}<span class="chip green">alive</span>{% else %}<span class="chip red">gone</span>{% endif %}{% if s.last_error %} <span class="small muted">{{ s.last_error[:40] }}</span>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>{% endif %}
+  {% if not alive %}<p class="notice" style="margin-top:12px">No live device is subscribed. Alberich cannot reach you until you allow ravens above.</p>{% endif %}
+</div>
+
+<form class="card" method="post" action="/settings/notifications">
+  <h3>What he may announce</h3>
+  {% for key, label in types.items() %}<label class="check"><input type="checkbox" name="t_{{ key }}"{% if prefs.types.get(key) %} checked{% endif %}>{{ label }}</label>{% endfor %}
+  <div class="grid2" style="margin-top:12px">
+    <label class="f">Quiet from<input type="time" name="quiet_start" value="{{ prefs.quiet.start }}"></label>
+    <label class="f">Quiet until<input type="time" name="quiet_end" value="{{ prefs.quiet.end }}"></label>
+    <label class="f">Most ravens per day<input type="number" min="0" max="20" name="daily_cap" value="{{ prefs.daily_cap }}"></label>
+    <label class="f">How he speaks<select name="tone"><option value="pet"{% if prefs.tone == "pet" %} selected{% endif %}>In character</option><option value="plain"{% if prefs.tone == "plain" %} selected{% endif %}>Plainly</option></select></label>
+    <label class="f">How rude he may get when ignored<select name="nag_ceiling">
+      {% for n, lab in [(1, "Grumbles"), (2, "Sharp words"), (3, "Scolding"), (4, "Fury"), (5, "Unrestrained")] %}<option value="{{ n }}"{% if prefs.nag_ceiling == n %} selected{% endif %}>{{ lab }}</option>{% endfor %}</select>
+      <span class="hint">He starts after two days of silence and escalates.</span></label>
+    <label class="f">Silence him for a while<select name="snooze_days"><option value="0">No</option><option value="1">One day</option><option value="3">Three days</option><option value="7">A week</option><option value="14">Two weeks (travel)</option></select>
+      {% if prefs.snooze_until %}<span class="hint">Currently silenced until {{ prefs.snooze_until }}.</span>{% endif %}</label>
+  </div>
+  <button class="btn" type="submit">Save</button>
+</form>
+
+<div class="card tscroll"><h3>Recently sent</h3><table class="t"><thead><tr><th>When</th><th>Message</th><th></th></tr></thead><tbody>
+{% for r in recent %}<tr><td class="small">{{ r.sent_at }}</td><td>{{ r.body }}</td><td>{% if r.ok %}<span class="chip green">sent</span>{% else %}<span class="chip line">held</span>{% endif %}</td></tr>{% else %}<tr><td colspan="3" class="muted">Nothing yet.</td></tr>{% endfor %}
+</tbody></table></div>
+
+<div class="card"><h3>The Throne room</h3><p class="small">The moods of Alberich and who he is: <a href="/pet">open the Throne room</a>.</p></div>
+
+<div class="card"><h3>Home-screen widget</h3><p class="small">Log spending straight from the home screen. <a href="/settings/widget">Set it up</a>.</p></div>
+
+<form method="post" action="/logout" data-logout><button class="btn ghost" type="submit">Leave the vault (log out)</button></form>
+{% endblock %}

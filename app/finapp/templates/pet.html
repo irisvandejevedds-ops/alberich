@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Throne{% endblock %}
+{% block body %}
+<section class="hero large">
+  <div class="stage" id="stage" data-mood="{{ mood_key }}">{{ svg|safe }}</div>
+  <div>
+    <p class="label who">Throne room</p>
+    <h1>{{ mood_title }}</h1>
+    <p>{{ mood_sub }}</p>
+    <p class="muted small">Zone this month: <strong>{{ zone_text }}</strong>. {{ pet.spent_n }} of {{ pet.expected_n }} unlocked credits used{% if pet.overdrawn_n %}, {{ pet.overdrawn_n }} beyond the plan{% endif %}.</p>
+  </div>
+</section>
+
+<div class="grid2">
+  <div class="card">
+    <h3>The golden mean</h3>
+    <p>Alberich judges you by moderation, not abstinence.</p>
+    <table class="t"><tbody>
+      <tr><td><span class="chip line">Brooding</span></td><td>You barely spend. Nothing gained, nothing lost.</td></tr>
+      <tr><td><span class="chip green">Pleased</span></td><td>You spend within reason. This is the goal.</td></tr>
+      <tr><td><span class="chip gold">Ailing</span></td><td>You overspend a little. The coin-sickness takes him at once.</td></tr>
+      <tr><td><span class="chip red">Cursed</span></td><td>You overspend past your buffer. Recovery takes days of moderation.</td></tr>
+    </tbody></table>
+  </div>
+  <div class="card">
+    <h3>Who is he?</h3>
+    <p class="small">Alberich means "elf-ruler", the root of Oberon. In the <em>Nibelungenlied</em> he guards the Nibelung hoard with the strength of twelve men until Siegfried takes the cloak of invisibility and pulls his beard.
+    In Wagner's <em>Ring</em> he forswears love, steals the Rhinegold, forges the Ring, enslaves the Nibelungs, and curses the Ring when Wotan takes it. He is, in short, a hoarder with a temper. You are here to stop him becoming either extreme.</p>
+  </div>
+</div>
+
+<section class="card"><h3>His moods</h3>
+<div class="gallery">{% for m, label, s in gallery %}<figure>{{ s|safe }}<figcaption>{{ label }}</figcaption></figure>{% endfor %}</div></section>
+
+<section class="card tscroll"><h3>Recent changes</h3><table class="t"><thead><tr><th>When</th><th>Mood</th></tr></thead><tbody>
+{% for h in history %}<tr><td>{{ h.ts }}</td><td>{{ h.mood }}</td></tr>{% else %}<tr><td colspan="2" class="muted">Nothing yet.</td></tr>{% endfor %}
+</tbody></table></section>
+{% endblock %}

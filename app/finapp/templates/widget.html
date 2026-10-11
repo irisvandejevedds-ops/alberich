@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the widget{% endblock %}
+{% block body %}
+<h1>The Widget</h1>
+<p class="muted">A real Android home-screen widget: your pouches as pixel buttons that log with one tap, even without opening anything. If the phone is out of range, taps are kept and sent later.</p>
+
+<div class="card">
+  <h3>1. Install the widget app</h3>
+  {% if apk %}
+  <p class="small">A small app ({{ apk_kb }} KB) that holds the widget. It is signed with this machine's own key and is not on any store, so Android will ask permission to install from Chrome the first time.</p>
+  <a class="btn" href="/download/alberich-widget.apk">Download the widget app</a>
+  {% else %}<p class="small">The widget app has not been built on this machine yet.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h3>2. Make a key for this phone</h3>
+  <p class="small">The key lets the widget log spendings and read pouch counts. Nothing else. You can cancel it here at any time.</p>
+  <form method="post" action="/settings/widget/new" class="row">
+    <label class="f" style="margin:0;flex:1 1 200px">Name<input type="text" name="name" value="My phone" maxlength="40"></label>
+    <button class="btn" type="submit">Make a key</button>
+  </form>
+</div>
+
+{% if new_token %}
+<div class="card aged">
+  <h3>3. Connect the app</h3>
+  <p class="small">Open this on the phone, with the widget app installed:</p>
+  <a class="btn" href="{{ link }}">Connect the widget app</a>
+  <p class="small" style="margin-top:14px">If that does nothing, open the app and paste these. The key is shown only once.</p>
+  <label class="f">Address<input type="text" readonly value="{{ base }}"></label>
+  <label class="f">Key<input type="text" readonly value="{{ new_token }}"></label>
+  <p class="small">Then long-press the home screen, choose Widgets, find Alberich, and drag it out.</p>
+</div>
+{% endif %}
+
+<div class="card tscroll"><h3>Keys</h3>
+  <table class="t"><thead><tr><th>Name</th><th>Made</th><th>Last used</th><th></th></tr></thead><tbody>
+  {% for k in keys %}<tr><td>{{ k.name }}</td><td class="small">{{ k.created_at[:10] }}</td><td class="small">{{ (k.last_used_at or 'never')[:16] }}</td>
+    <td>{% if k.revoked_at %}<span class="chip line">cancelled</span>{% else %}<form method="post" action="/settings/widget/revoke"><input type="hidden" name="id" value="{{ k.id }}"><button class="btn ghost" type="submit">Cancel</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">No keys yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+{% endblock %}

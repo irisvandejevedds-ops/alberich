@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Warlock{% endblock %}
+{% block body %}
+<section class="hero">
+  <div class="stage" id="stage">{{ art|safe }}</div>
+  <div>
+    <p class="label who">The Warlock, keeper of the reckoning</p>
+    <h1>{{ 'Thinking' if running else 'Speak' }}</h1>
+    <div class="speech">{% if not ok %}Grant me leave to read your ledgers, and I shall advise and amend.{% elif running %}One moment. I am weighing your words against the ledgers.{% else %}Tell me what is unusual, what is changing, or what to tune.{% endif %}</div>
+  </div>
+</section>
+
+{% if not llm.key_present %}<div class="error">No Anthropic key is configured, so the warlock cannot be reached.</div>{% endif %}
+
+{% if not ok %}
+<form class="card aged" method="post" action="/warlock/consent">
+  <h3>Before we begin</h3>
+  <details class="fold"><summary>Terms</summary>
+  <p class="small">With each message, the warlock reads your <strong>recent charges</strong> (the last 90 days: date, amount, description, merchant, category, your share, the account's name), your receipts' line items, your category averages, income, cuts, pouches and credit uses, and your notes. It never sees account numbers, statement files or receipt images, and long digit runs in descriptions are masked.</p>
+  <p class="small">This is sent to Anthropic, who run the model, each time you speak. He may propose changing almost anything: categories, shares, transfers, spending cuts, pouches, credit uses. <strong>Nothing changes until you tick it</strong>, and every proposal is described in plain words first.</p>
+  </details>
+  <label class="check"><input type="checkbox" name="grant">I grant the warlock leave to read these ledgers</label>
+  <button class="btn" type="submit">Grant leave</button>
+</form>
+{% else %}
+
+<div class="chat" {% if running %}data-poll="/api/warlock/status"{% endif %}>
+{% for m in msgs %}
+  {% if m.role == 'me' %}
+  <div class="speech msg me">{{ m.text }}</div>
+  {% elif m.status == 'running' %}
+  <div class="card aged msg"><div class="label">The Warlock</div><p>Weighing your words against the ledgers. A long ledger can take a minute.</p><div class="meter working"><i></i></div></div>
+  {% elif m.status == 'failed' %}
+  <div class="error msg"><strong>The warlock could not answer.</strong> {{ m.error }}</div>
+  {% else %}
+  <div class="card aged msg"><div class="label">The Warlock</div>
+    <p>{{ m.text }}</p>
+    {% if m.actions %}
+    <form method="post" action="/warlock/apply"><input type="hidden" name="id" value="{{ m.id }}">
+      <div class="label">Proposed. Tick what to apply.</div>
+      {% for a in m.actions %}
+      <label class="check act{% if not a.ok %} off{% endif %}">
+        {% if loop.index0 in m.applied %}<span class="chip green">applied</span>
+        {% elif a.ok %}<input type="checkbox" name="pick" value="{{ loop.index0 }}" checked>
+        {% else %}<span class="chip line">cannot</span>{% endif %}
+        <span>{{ a.text }}{% if not a.ok %} <span class="muted">({{ a.why_not }})</span>{% endif %}</span>
+      </label>
+      {% endfor %}
+      {% if m.applied|length < m.actions|length %}<button class="btn" type="submit">Apply what is ticked</button>{% endif %}
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endfor %}
+<a id="end"></a>
+</div>
+
+<form class="card" method="post" action="/warlock/say" data-busy="The Warlock is hearing you.">
+  <h3>Tell the warlock</h3>
+  <label class="f">Your words<textarea name="text" rows="4" maxlength="1500" {% if running %}disabled{% endif %}></textarea></label>
+  <div class="row"><button class="btn" type="submit"{% if running %} disabled{% endif %}>Cast</button>
+    {% if msgs %}<button class="btn ghost" type="submit" formaction="/warlock/reset" data-confirm="Clear this conversation? Notes and applied changes stay.">Clear the conversation</button>{% endif %}</div>
+  <p class="small muted">Used this month: {{ '%.1f' % llm.spent_cents }}&cent; of {{ llm.cap_cents }}&cent;.</p>
+</form>
+
+{% if adjustments or notes %}
+<div class="card tscroll"><h3>What the warlock remembers</h3>
+  {% for a in adjustments %}<form method="post" action="/warlock/adjustment/remove" class="row notez"><input type="hidden" name="id" value="{{ a.id }}">
+    <span class="small"><strong>{{ month_label(a.month) }}</strong>: {{ money(a.amount_cents) }} {{ 'extra income' if a.kind == 'extra_income' else 'one-off expense' }}{% if a.label %} ({{ a.label }}){% endif %}, {{ treat_words[a.treat] }}</span>
+    <button class="btn ghost" type="submit">Forget</button></form>{% endfor %}
+  {% for n in notes %}<form method="post" action="/warlock/note/remove" class="row notez"><input type="hidden" name="id" value="{{ n.id }}">
+    <span class="small">{{ n.text }}</span><button class="btn ghost" type="submit">Forget</button></form>{% endfor %}
+</div>
+{% endif %}
+
+<details class="fold card aged"><summary>What the warlock sees</summary>
+  <p class="small">Exactly this goes to the model with each message, with your own words. It is long: that is the recent charges.</p>
+  <pre class="excerpt">{{ ctx_json }}</pre>
+  <form method="post" action="/warlock/consent"><input type="hidden" name="revoke" value="1"><button class="btn ghost" type="submit">Take back my leave</button></form>
+</details>
+{% endif %}
+{% endblock %}

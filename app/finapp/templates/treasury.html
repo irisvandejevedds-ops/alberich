@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Treasury{% endblock %}
+{% block body %}
+<h1>The Treasury</h1>
+<p class="muted">What you really spend, category by category, month over month. Nothing here is a limit to stay under. Alberich uses these averages to work out how many credits each pouch in the Purse should have, and keeps them up to date as statements arrive.</p>
+
+{% if not p.categories %}
+<div class="notice"><strong>No spending on file yet.</strong> File a few statements in <a href="/ledgers">the Ledgers</a> and this page will fill in.</div>
+{% else %}
+{% if behind %}<div class="notice"><strong>Some statements stop early.</strong> {% for c in behind %}{{ c.account }} ends {{ c.to }}{{ ', ' if not loop.last }}{% endfor %}. The averages rest on what is filed, so they may read low until the newer statements are in.</div>{% endif %}
+
+<div class="card" id="real"><h3>Your real month</h3>
+  <table class="t wf"><tbody>
+    <tr><td>Your pay</td><td class="num">{{ money(p.income) }}</td></tr>
+    <tr><td>{{ partner }}'s share</td><td class="num">+ {{ money(p.partner_share) }}</td></tr>
+    <tr class="sum"><td><strong>Money in</strong></td><td class="num"><strong>{{ money(p.money_in) }}</strong></td></tr>
+    <tr><td>Everything you paid</td><td class="num">&minus; {{ money(p.paid) }}</td></tr>
+    <tr class="sum"><td><strong>Left over</strong></td><td class="num"><strong>{% if p.left_over >= 0 %}{{ money(p.left_over) }}{% else %}&minus; {{ money(-p.left_over) }}{% endif %}</strong></td></tr>
+  </tbody></table>
+  <p class="small muted" style="margin:10px 0 0">In a typical month. Your pay comes from {{ 'your salary reference point' if p.pay_from == 'salary' else 'the deposits that look like pay' }}. {{ partner }}'s share is the part of what you paid that your Review gives to her, and "everything you paid" is the full amounts, hers included. She pays her share back, so repayments settle that line and are not extra income. {% if tally.balance_after_suggested > 50 %}She owes you {{ money(tally.balance_after_suggested) }} right now: <a href="/review#iou">see the Review</a>.{% elif tally.balance_after_suggested < -50 %}She is {{ money(-tally.balance_after_suggested) }} ahead right now.{% else %}You are square right now.{% endif %} The categories below count only your own share, because that is what the Purse is for.</p>
+  <details class="fold" style="margin-top:10px"><summary>The {{ deposits|length }} deposits counted as money in</summary>
+    <p class="small muted">Only deposits that look like pay count as income unless you say otherwise. Anything else is set aside below, where you can count it again, or mark it as your partner paying you back.</p>
+    <form method="post" action="/treasury/deposit" style="margin:6px 0 10px"><button class="btn" type="submit" name="as" value="only_pay">Set aside every deposit that does not look like pay</button></form>
+    {% for x in deposits %}<form class="dep" method="post" action="/treasury/deposit"><input type="hidden" name="txn_id" value="{{ x.id }}">
+      <span class="small"><strong>{{ money(x.cents) }}</strong> &middot; {{ x.posted_date }} &middot; {{ x.acct }} &middot; {{ x.d }}{% if x.likely %} <span class="chip green">looks like pay</span>{% endif %}</span>
+      <span class="depb"><button class="btn ghost" type="submit" name="as" value="repayment">Partner paid me back</button><button class="btn ghost" type="submit" name="as" value="not_income">Not income</button></span></form>{% endfor %}
+    {% if aside %}<div class="label" style="margin-top:12px">Set aside, not counted</div>
+    {% for x in aside %}<form class="dep" method="post" action="/treasury/deposit"><input type="hidden" name="txn_id" value="{{ x.id }}">
+      <span class="small"><strong>{{ money(x.cents) }}</strong> &middot; {{ x.posted_date }} &middot; {{ x.acct }} &middot; {{ x.d }}</span>
+      <span class="depb"><button class="btn ghost" type="submit" name="as" value="recount">Count as income again</button></span></form>{% endfor %}{% endif %}
+  </details>
+  <p class="small muted" style="margin:10px 0 0">Every deposit counts as money in, so mark a partner paying you back as a repayment on <a href="/reckoning#tally">the Reckoning</a>, or it will make your income look bigger than it is. From {{ p.months|length }} month{{ 's' if p.months|length != 1 }} of statements. A month the statements only partly cover counts in proportion.</p>
+</div>
+
+<div class="card" id="anchors"><h3>Reference points</h3>
+  <p class="small muted">Your pay and your rent are the two big fixed things. Enter each with the date it starts from. A raise or a new rent split is a new line from its date, so earlier months keep what was true then. Rent payments you have not decided yourself take your share from the line in effect on their date.</p>
+  {% if changed %}<div class="notice"><strong>Your last two pays were {{ money(changed.cents) }}, not {{ money(changed.was) }}.</strong>
+    <form method="post" action="/treasury/anchor" class="row" style="margin-top:8px"><input type="hidden" name="kind" value="salary"><input type="hidden" name="amount" value="{{ '%.2f' % (changed.cents / 100) }}"><input type="hidden" name="every" value="{{ changed.every }}"><input type="hidden" name="start" value="{{ changed.from }}">
+      <button class="btn" type="submit">Start a new salary line from {{ changed.from }}</button></form></div>{% endif %}
+  {% if suggest_pay %}<div class="notice"><strong>Your pay looks like {{ money(suggest_pay.cents) }} {{ every_words[suggest_pay.every] }}.</strong>
+    <form method="post" action="/treasury/anchor" class="row" style="margin-top:8px"><input type="hidden" name="kind" value="salary"><input type="hidden" name="amount" value="{{ '%.2f' % (suggest_pay.cents / 100) }}"><input type="hidden" name="every" value="{{ suggest_pay.every }}"><input type="hidden" name="start" value="{{ suggest_pay.from }}">
+      <button class="btn" type="submit">Use that as my salary</button></form></div>{% endif %}
+  {% for a in salary %}<form class="dep" method="post" action="/treasury/anchor/remove"><input type="hidden" name="id" value="{{ a.id }}"><span class="small"><strong>Pay</strong> from {{ a.start_date }}: {{ money(a.amount_cents) }} {{ every_words[a.every] }}, about {{ money(monthly(a)) }} a month</span><span class="depb"><button class="btn ghost" type="submit">Remove</button></span></form>{% endfor %}
+  {% for a in rent %}<form class="dep" method="post" action="/treasury/anchor/remove"><input type="hidden" name="id" value="{{ a.id }}"><span class="small"><strong>Rent</strong> from {{ a.start_date }}: {{ money(a.amount_cents) }} a month, your share {{ '%g' % a.my_pct }}% (payments containing &ldquo;{{ a.match or 'rent' }}&rdquo;)</span><span class="depb"><button class="btn ghost" type="submit">Remove</button></span></form>{% endfor %}
+  <form method="post" action="/treasury/anchor" class="grid2" style="margin-top:12px">
+    <label class="f">What<select name="kind"><option value="salary">My pay (take-home)</option><option value="rent">My rent</option></select></label>
+    <label class="f">Amount ($)<input type="text" inputmode="decimal" name="amount" placeholder="0.00" required></label>
+    <label class="f only-pay">Pay comes<select name="every">{% for k, v in every_words.items() %}<option value="{{ k }}"{% if k == '2weeks' %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+    <label class="f only-rent" hidden>Your share of the rent (%)<input type="number" name="share" min="0" max="100" step="1" value="50"></label>
+    <label class="f only-rent" hidden>Rent payments contain<span class="hint">So Alberich can find the payment.</span><input type="text" name="match" value="rent" maxlength="40"></label>
+    <label class="f">From<input type="date" name="start" value="{{ today }}" required></label>
+    <div><button class="btn" type="submit">Add</button></div>
+  </form>
+</div>
+
+<form class="card" id="cuts" method="post" action="/treasury/cuts"><h3>Spend less? (optional)</h3>
+  <p class="small muted">Choose a cut for everything, and change it for any one category. A category's own figure beats the overall one. The Purse is sized from the reduced amounts.</p>
+  <div class="grid2"><label class="f">Cut everything by (%)<input type="number" name="global" min="0" max="90" step="0.5" value="{{ '%g' % p.global }}" placeholder="0"></label>
+    <div class="f"><span class="label">What that saves</span>
+      <strong class="saveline">{% if p.saving > 0 %}about {{ money(p.saving) }} a month{% if p.saving_pct is not none %}, {{ p.saving_pct }}% of your income{% endif %}{% else %}Nothing yet. Pick a cut and save.{% endif %}</strong></div></div>
+
+  <div class="crows">
+  {% for c in p.categories %}
+  <div class="crow">
+    <div class="cname"><strong>{{ c.name }}</strong>
+      <span class="cnums"><span>average {{ money(c.avg) }}</span>
+        {% if c.delta is not none %}<span>{{ latest }} {{ money(c.last) }}</span>
+        <span class="delta {{ 'up' if c.delta > 0 else 'down' if c.delta < 0 else '' }}">{{ '&uarr; ' if c.delta > 0 else '&darr; ' if c.delta < 0 else '' }}{{ money(c.delta|abs) }} vs usual</span>{% endif %}</span>
+      {% if c.callout %}<span class="callout">{{ c.callout }}</span>{% endif %}
+      <span class="small muted">{% if pouches.get(c.id) %}Purse: {% for q in pouches[c.id] %}{{ q.name }} {{ q.credits }} &times; {{ money(q.estimate) }}{{ ', ' if not loop.last }}{% endfor %}{% else %}no pouch for this{% endif %}</span></div>
+    <label class="cmod">Change (%)<input type="text" inputmode="decimal" name="m_{{ c.id }}" value="{{ '%g' % (c.change if c.change else 0) if c.custom else '' }}" placeholder="{{ '%g' % (c.change if c.change else 0) }}" aria-label="Change for {{ c.name }}"></label>
+    <div class="ctarget"><span class="label">Aim</span>{{ money(c.target) }}</div>
+  </div>
+  {% endfor %}
+  </div>
+  {% if p.latest is none or not p.compared_with %}<p class="small muted">Once two months of statements are in, each row also shows how the latest month compares with the usual, and what drove any big change.</p>{% endif %}
+  <button class="btn" type="submit">Save</button>
+</form>
+
+{% endif %}
+{% if extras %}
+<div class="card"><h3>One-offs you mentioned</h3>
+  <p class="small muted">Kept out of the averages, so they do not make a normal month look dearer.</p>
+  {% for a in extras %}<form method="post" action="/warlock/adjustment/remove" class="row notez"><input type="hidden" name="id" value="{{ a.id }}"><input type="hidden" name="back" value="/treasury">
+    <span class="small"><strong>{{ month_label(a.month) }}</strong>: {{ money_w(a.amount_cents) }} {{ 'extra income' if a.kind == 'extra_income' else 'one-off expense' }}{% if a.label %} ({{ a.label }}){% endif %}, {{ treat_words[a.treat] }}</span>
+    <button class="btn ghost" type="submit">Forget</button></form>{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

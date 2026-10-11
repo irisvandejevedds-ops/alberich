@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Hall{% endblock %}
+{% block body %}
+<section class="hero">
+  <div class="stage" id="stage" data-mood="{{ mood_key }}">{{ svg|safe }}</div>
+  <div>
+    <p class="label who"><a href="/pet" style="color:inherit">Alberich, lord of the Nibelungs</a></p>
+    <h1>{{ mood_title }}</h1>
+    <p class="muted small">{{ mood_sub }}</p>
+    <div class="speech" id="saying">{{ saying }}</div>
+  </div>
+</section>
+<section class="card">
+  <div class="cardhead"><h3>Log spending</h3></div>
+  {% include "_tiles.html" %}
+  <p class="small" style="margin:14px 0 0"><strong>{{ summary }}</strong></p>
+  {% if idle_n and not unset %}<p class="muted small" style="margin:6px 0 0">{{ idle_n }} more pouch{{ 'es' if idle_n != 1 }} sit empty in <a href="/activities">the Purse</a>.</p>{% endif %}
+</section>
+{% if unset %}
+<div class="notice"><strong>No allowances yet.</strong> <a href="/activities">Open the Purse</a> to set how often you may spend on each.</div>
+{% endif %}
+{% if owed.missing or owed.review %}
+<div class="notice"><strong>The ledgers are incomplete.</strong> {% if owed.missing %}{{ owed.missing }} statement{{ 's' if owed.missing != 1 }} missing. {% endif %}{% if owed.review %}{{ owed.review }} need{{ 's' if owed.review == 1 }} a look. {% endif %}<a href="/ledgers">Open the Ledgers</a></div>
+{% endif %}
+{% endblock %}

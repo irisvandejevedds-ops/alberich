@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Alberich: sort the Other pile{% endblock %}
+{% block body %}
+<p class="small"><a href="/review">&larr; The Review</a></p>
+<h1>Sort The Other Pile</h1>
+<p class="muted">These merchants are still filed under Other. Alberich already guesses from the names he knows. The Warlock can sort the rest, and you can change any answer before it is applied.</p>
+
+{% if request.query_params.get('moved') is not none and request.query_params.get('merchants') %}<div class="notice">Moved {{ request.query_params.get('moved') }} purchase{{ 's' if request.query_params.get('moved') != '1' }} from {{ request.query_params.get('merchants') }} merchant{{ 's' if request.query_params.get('merchants') != '1' }}.</div>{% endif %}
+
+{% if pending %}
+<form class="card" id="byhand" method="post" action="/review/sort/set"><h3>Sort by hand</h3>
+  <p class="small muted">Pick a category, or type a new one, for as many merchants as you like, then press Move once. Rows you leave alone stay where they are. Every purchase still under Other moves, and later purchases follow.</p>
+  {% for p in pending %}
+  <div class="sortrow">
+    <div class="who"><strong>{{ p.label }}</strong><span class="small muted">{{ p.n }} purchase{{ 's' if p.n != 1 }}, {{ money(p.total) }}</span></div>
+    <select name="cat_{{ p.id }}" aria-label="Category for {{ p.label }}"><option value="">Choose&hellip;</option>{% for c in cat_rows %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+    <input type="text" name="new_{{ p.id }}" maxlength="40" placeholder="or a new category" aria-label="New category for {{ p.label }}">
+  </div>
+  {% endfor %}
+  <button class="btn" type="submit">Move</button>
+</form>
+{% endif %}
+
+{% if job and job.status == 'running' %}
+<div class="card aged" data-poll="/api/sort/{{ job.id }}"><h3>Alberich is sorting</h3><p>The Warlock is reading the merchant names. This usually takes under a minute, and you can leave this page.</p><div class="meter working"><i></i></div></div>
+{% elif job and job.status == 'failed' %}
+<div class="error"><strong>Nothing was sorted this time.</strong> {{ job.error }}</div>
+{% elif job %}
+<form method="post" action="/review/sort/apply"><input type="hidden" name="id" value="{{ job.id }}">
+<div class="card tscroll"><h3>The Warlock's sorting</h3>
+  <table class="t"><thead><tr><th></th><th>Merchant</th><th>Buys</th><th>Category</th></tr></thead><tbody>
+  {% for r in rows %}<tr><td><input type="checkbox" name="take" value="{{ r.id }}"{% if r.category != 'Other' %} checked{% endif %} aria-label="Use for {{ r.name }}"></td>
+    <td><strong>{{ r.name }}</strong>{% if r.why %}<br><span class="small muted">{{ r.why }}</span>{% endif %}</td><td>{{ r.n }}</td>
+    <td><select name="cat_{{ r.id }}" aria-label="Category for {{ r.name }}">{% for c in cats %}<option{% if c == r.category %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></td></tr>{% endfor %}
+  </tbody></table>
+  <p class="small muted" style="margin-top:10px">Ticked rows set that merchant's category from now on, and re-file its purchases that were under Other. Lines you already moved elsewhere are left alone.</p>
+</div>
+<button class="btn" type="submit">Apply what is ticked</button>
+</form>
+{% endif %}
+
+{% if not job or job.status == 'failed' %}
+{% if not pending %}<div class="notice">Nothing is filed under Other. Well sorted.</div>
+{% else %}
+<form class="card aged" method="post" action="/review/sort/run" data-busy="Sending the names to the Warlock.">
+  <h3>What will be sent</h3>
+  {% if not llm.key_present %}<p class="small">No Anthropic key is configured, so this is switched off.</p>
+  {% elif llm.killed %}<p class="small">The Warlock is switched off.</p>
+  {% else %}
+  <p class="small">Only these {{ pending|length }} merchant names go to Anthropic, whose model the Warlock speaks through: (as they appear on your statements, with store numbers removed) and how many purchases each. No amounts, dates, accounts or descriptions beyond the name. Used this month: {{ '%.1f' % llm.spent_cents }}&cent; of {{ llm.cap_cents }}&cent;.</p>
+  <pre class="excerpt">{% for p in pending %}{{ p.label }}  ({{ p.n }}){{ "\n" }}{% endfor %}</pre>
+  <label class="check"><input type="checkbox" name="consent">I have read the list and agree to send exactly this</label>
+  <button class="btn" type="submit" data-needs-consent>Ask the Warlock to sort them</button>
+  {% endif %}
+</form>
+{% endif %}
+{% endif %}
+{% endblock %}

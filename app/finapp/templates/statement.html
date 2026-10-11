@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Alberich: a statement{% endblock %}
+{% block body %}
+<p class="small"><a href="/ledgers">&larr; The Ledgers</a></p>
+<h1>{{ acct.name if acct else st.original_name }}</h1>
+<p><span class="chip {{ chip[st.status][0] }}">{{ chip[st.status][1] }}</span>
+  {% if st.period_end %}<span class="muted"> {{ st.period_start }} to {{ st.period_end }}</span>{% endif %}</p>
+{% if st.note %}<div class="notice">{{ st.note }}</div>{% endif %}
+
+{% if st.status == 'pending_template' or st.status == 'failed' %}
+<div class="card aged"><h3>Teach Alberich this layout</h3>
+  <p class="small">He will draft a reading of the file and show you a preview before anything is filed.</p>
+  {% if st.kind != 'ofx' %}<a class="btn" href="/statements/{{ st.id }}/template">Set up the template</a>{% endif %}</div>
+{% endif %}
+
+{% if st.status == 'pending_account' or st.status == 'needs_review' %}
+<form class="card" method="post" action="/statements/{{ st.id }}/account"><h3>{{ 'Which account is this?' if st.status == 'pending_account' else 'Belongs to another account?' }}</h3>
+  <label class="f">Account<select name="account_id">{% for a in cands %}<option value="{{ a.id }}"{% if acct and acct.id == a.id %} selected{% endif %}>{{ a.name }}{% if a.last4 %} ({{ a.last4 }}){% endif %}</option>{% endfor %}</select></label>
+  <div class="row"><button class="btn" type="submit">File it there</button>{% if not cands %}<a class="small" href="/ledgers/accounts">Add an account first</a>{% endif %}</div>
+</form>
+{% endif %}
+
+{% if st.status == 'needs_review' %}
+<form class="card" method="post" action="/statements/{{ st.id }}/accept"><h3>Accept it as it is</h3>
+  <p class="small">If the difference is explained (a fee the bank confirmed, a statement you know is missing), accept it and say why. The reason is kept with the statement.</p>
+  <label class="f">Reason<input type="text" name="reason" required minlength="3" maxlength="200"></label>
+  <button class="btn" type="submit">Accept</button>
+</form>
+{% endif %}
+
+{% if txns %}
+<div class="card"><div class="cardhead"><h3>{{ txns|length }} lines</h3>
+  {% if st.opening_cents is not none and st.closing_cents is not none %}<span class="small muted">{{ 'Owing' if liability else 'Balance' }} {{ money(st.opening_cents) }}{{ ' (worked out)' if st.opening_derived }} to {{ money(st.closing_cents) }}</span>{% endif %}</div>
+  <div class="tscroll"><table class="t"><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+  {% for t in txns %}<tr><td>{{ t.posted_date }}</td><td>{{ t.description_raw }}</td><td style="text-align:right">{{ money(-t.amount_cents) if t.amount_cents < 0 else money(t.amount_cents) }}{% if t.amount_cents < 0 %} <span class="chip green">in</span>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endif %}
+
+<details class="fold card aged"><summary>File details and actions</summary>
+  <p class="small">{{ st.original_name }} · {{ st.kind|upper }} · received {{ st.received_at }}{% if tmpl %} · layout "{{ tmpl.name }}" v{{ st.template_version }}{% endif %}</p>
+  <div class="row">
+    <form method="post" action="/statements/{{ st.id }}/reprocess"><button class="btn ghost" type="submit">Read it again</button></form>
+    {% if st.kind != 'ofx' %}<a class="btn ghost" href="/statements/{{ st.id }}/template">Edit the layout</a>{% endif %}
+    <form method="post" action="/statements/{{ st.id }}/delete" data-confirm="Remove this statement and its lines from the ledger?"><button class="btn danger" type="submit">Remove</button></form>
+  </div></details>
+{% endblock %}

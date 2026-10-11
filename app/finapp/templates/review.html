@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Review{% endblock %}
+{% macro suggestion(x, back) %}
+  <form class="dep" method="post" action="/review/repay"><input type="hidden" name="txn_id" value="{{ x.id }}"><input type="hidden" name="back" value="{{ back }}">
+    <span class="small"><strong>{{ money(x.cents) }}</strong> &middot; {{ x.date }} &middot; {{ x.acct }} &middot; {{ x.desc }}{% if x.sure %} <span class="chip green">like one you confirmed</span>{% endif %}</span>
+    <span class="depb"><label class="small">Counts <input type="text" inputmode="decimal" name="amount" value="{{ '%.2f' % (x.cents / 100) }}" aria-label="Amount that counts against what she owes" style="width:96px;display:inline-block;margin:0"></label>
+      <button class="btn ghost" type="submit" name="decision" value="yes">Her repayment</button><button class="btn ghost" type="submit" name="decision" value="no">Not from her</button></span></form>
+{% endmacro %}
+{% macro card(i, kind) %}
+<article class="card rv{% if kind == 'done' %} aged{% endif %}" data-line="{{ i.id }}" data-bps="{{ i.my_bps }}" data-merchant="{{ i.merchant_id or '' }}" data-txn="{{ i.txn_id }}" data-rcpt="{{ i.receipt_id or '' }}">
+  <div class="cardhead"><h3>{{ i.description }}</h3><strong class="amt">{{ money(i.amount_cents) if i.amount_cents >= 0 else '+' ~ money(-i.amount_cents) }}</strong></div>
+  {% if i.receipt_id %}<p class="small muted"><span class="chip green">from a receipt</span> one item of the {{ money(i.txn_cents) }} purchase on {{ i.description_raw }}</p>
+  {% elif i.description != i.description_raw %}<p class="small muted">on {{ i.description_raw }}</p>{% endif %}
+  <p class="small muted">{{ i.posted_date }} · {{ i.acct }}{% if i.owner != 'me' %} ({{ i.owner }}){% endif %}{% if i.tkind == 'refund' %} · refund{% endif %}</p>
+  <p class="small why">{{ i.why }}</p>
+  <div class="splitbar" role="group" aria-label="Who owns this">
+    {% for lab, v in [('All mine', 10000), ('Half', 5000), ('All ' ~ partner ~ "'s", 0)] %}<button type="button" class="opt{% if i.my_bps == v and (kind == 'done' or kind == 'auto') %} on{% elif i.my_bps == v %} hint{% endif %}" data-bps="{{ v }}">{{ lab }}</button>{% endfor %}
+    {% set custom = i.my_bps not in (0, 5000, 10000) %}
+    <span class="custom"><input type="number" min="0" max="100" step="1" inputmode="numeric" aria-label="Your share in percent" placeholder="%" value="{{ '%g' % (i.my_bps / 100) if custom else '' }}"><button type="button" class="opt{% if custom and kind != 'ask' %} on{% elif custom %} hint{% endif %}" data-custom>Set %</button></span>
+  </div>
+  <div class="row small" style="margin-top:10px">
+    <label class="inline">Kind <select class="cat" aria-label="Category">{% for c in cats %}<option value="{{ c.id }}"{% if c.id == i.category_id %} selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></label>
+    {% if i.merchant_id %}<label class="check inline"><input type="checkbox" class="rule"{% if i.merchant_id in rules %} checked{% endif %}>Always this way for {{ i.merchant }}</label>{% endif %}
+    {% if kind == 'done' %}<button type="button" class="btn ghost" data-reopen>Undo</button>{% else %}<button type="button" class="opt keep" data-keep>Looks right</button>{% endif %}
+  </div>
+</article>
+{% endmacro %}
+{% block body %}
+<h1>The Review</h1>
+<div class="monthnav"><a class="btn ghost" href="/review?month={{ prev }}">&larr;</a><strong class="px">{{ month }}</strong><a class="btn ghost" href="/review?month={{ nxt }}">&rarr;</a>
+  <a class="small" href="/reckoning?month={{ month }}">The reckoning</a></div>
+<p class="small"><a href="/review/sort">Sort the Other pile</a></p>
+<p class="muted">Once a month, say who each purchase belonged to. Alberich learns your habits and stops asking about the ones you always do the same way.</p>
+
+<div class="card" id="iou"><h3>What {{ partner }} owes you</h3>
+  {% set after = tally.balance_after_suggested %}
+  <div class="big">{% if after > 50 %}{{ money(after) }}{% elif after < -50 %}{{ partner }} is {{ money(-after) }} ahead{% else %}All square{% endif %}</div>
+  <p class="small muted">Her share of what you paid{% if tally.start %} since {{ tally.start }}{% endif %}: {{ money(tally.owed) }}. Paid back: {{ money(tally.received) }}.{% if tally.waived %} Waived: {{ money(tally.waived) }}.{% endif %}{% if tally.suggested_total %} Counting {{ money(tally.suggested_total) }} of deposits that look like ones you confirmed before, until you say otherwise below.{% endif %}</p>
+  {% if tally.suggested %}<div class="label" style="margin-top:12px">Might be {{ partner }} paying you back</div>
+  <p class="small muted">{% if tally.maybe_total %}{{ money(tally.maybe_total) }} of e-transfers that are not pay.{% endif %} Say which are hers and the amount that counts. Ones like those you confirm are counted for you next time.</p>
+  {% set bigs = tally.suggested|selectattr('cents', 'ge', 5000)|list %}{% set smalls = tally.suggested|rejectattr('cents', 'ge', 5000)|list %}
+  {% for x in bigs %}{{ suggestion(x, '/review?month=' ~ month ~ '#iou') }}{% endfor %}
+  {% if smalls %}<details class="fold"><summary>{{ smalls|length }} smaller deposit{{ 's' if smalls|length != 1 }}</summary>{% for x in smalls %}{{ suggestion(x, '/review?month=' ~ month ~ '#iou') }}{% endfor %}</details>{% endif %}{% endif %}
+  <form class="row" method="post" action="/reckoning/pay" style="margin-top:12px"><input type="hidden" name="back" value="/review?month={{ month }}#iou"><input type="hidden" name="direction" value="from_partner"><input type="hidden" name="note" value="entered by hand">
+    <label class="f" style="margin:0">{{ partner }} paid me ($)<input type="text" inputmode="decimal" name="amount" placeholder="760.00" style="width:110px" required></label>
+    <label class="f" style="margin:0">On<input type="date" name="date" value="{{ today }}" required></label><button class="btn ghost" type="submit">Record</button></form>
+  <p class="small muted">For a repayment that is not in a filed statement yet. When the statement arrives, mark the deposit as hers and remove this entry so it is not counted twice.</p>
+  {% if tally.balance > 50 %}<form class="row" method="post" action="/reckoning/waive" style="margin-top:12px"><input type="hidden" name="back" value="/review?month={{ month }}#iou">
+    <label class="f" style="margin:0">Waive<input type="text" inputmode="decimal" name="amount" value="{{ '%.2f' % (tally.balance / 100) }}" style="width:110px"></label><button class="btn ghost" type="submit" data-confirm="Let {{ partner }} off this much? It counts as settled.">Waive it</button></form>{% endif %}
+  <p class="small" style="margin:10px 0 0"><a href="/reckoning#tally">Every repayment, and mark one by hand</a></p>
+</div>
+
+{% if not prog.total %}
+<div class="notice">Nothing to review in {{ month }}. File statements in <a href="/ledgers">the Ledgers</a> first.</div>
+{% else %}
+<div class="card aged"><div class="cardhead"><h3 id="prog-text">{{ prog.done }} of {{ prog.total }} decided</h3><span class="small muted" id="prog-sub">{{ prog.ask }} need you · {{ prog.auto }} Alberich is sure of</span></div>
+  <div class="meter"><i id="prog-bar" style="width:{{ (100 * prog.done / prog.total)|round|int }}%"></i></div></div>
+
+<section data-month="{{ month }}">
+{% if ask %}
+<div class="cardhead"><h2>Needs your call</h2><button class="btn ghost" type="button" data-confirm-group="ask">Accept every proposal below</button></div>
+{% for i in ask %}{{ card(i, 'ask') }}{% endfor %}
+{% endif %}
+{% if auto %}
+<details class="fold" {% if not ask %}open{% endif %}><summary>Alberich decided {{ auto|length }} himself. Check them if you like.</summary>
+  <div class="row" style="margin:8px 0"><button class="btn" type="button" data-confirm-group="auto">These look right</button></div>
+  {% for i in auto %}{{ card(i, 'auto') }}{% endfor %}</details>
+{% endif %}
+{% if done %}
+<details class="fold" id="decided-fold"><summary><span id="decided-count">{{ done|length }}</span> decided</summary><div id="decided-list">{% for i in done %}{{ card(i, 'done') }}{% endfor %}</div></details>
+{% endif %}
+</section>
+{% endif %}
+{% endblock %}

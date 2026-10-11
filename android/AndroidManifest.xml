@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="app.alberich.widget">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <application android:label="Alberich" android:icon="@mipmap/ic_launcher" android:allowBackup="false"
+        android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="alberich" android:host="setup"/>
+            </intent-filter>
+        </activity>
+        <receiver android:name=".PouchWidget" android:exported="true" android:label="Alberich pouches">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info"/>
+        </receiver>
+        <activity android:name=".RefreshActivity" android:exported="false" android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true" android:noHistory="true" android:taskAffinity="" android:launchMode="singleInstance"/>
+        <receiver android:name=".LogReceiver" android:exported="false"/>
+        <service android:name=".SyncService" android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE"/>
+        <service android:name=".RetryService" android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE"/>
+    </application>
+</manifest>

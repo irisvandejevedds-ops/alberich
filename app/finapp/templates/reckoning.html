@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the Reckoning{% endblock %}
+{% block body %}
+<h1>The Reckoning</h1>
+<div class="monthnav"><a class="btn ghost" href="/reckoning?month={{ prev }}">&larr;</a><strong class="px">{{ month }}</strong><a class="btn ghost" href="/reckoning?month={{ nxt }}">&rarr;</a>
+  <a class="small" href="/review?month={{ month }}">The review</a></div>
+{% if request.query_params.get('moved') %}<div class="notice">Sorted. {{ request.query_params.get('moved') }} purchases were re-filed.</div>{% endif %}
+{% if r.undecided %}<div class="notice"><strong>{{ r.undecided }} purchase{{ 's' if r.undecided != 1 }} still undecided.</strong> These figures use the proposed splits until you finish <a href="/review?month={{ month }}">the review</a>.</div>{% endif %}
+
+<div class="grid2">
+  <div class="card"><div class="label">Your share of spending</div><div class="big">{{ money(r.mine) }}</div>
+    <p class="small muted">Of {{ money(r.all) }} spent across all tracked accounts{% if r.income %}; your side took in {{ money(r.income) }}{% endif %}.</p></div>
+  <div class="card aged"><div class="label">This month's split</div>
+    {% if r.partner_owes_me > 50 %}<div class="big">{{ partner }} owes you {{ money(r.partner_owes_me) }}</div>
+    {% elif r.partner_owes_me < -50 %}<div class="big">You owe {{ partner }} {{ money(-r.partner_owes_me) }}</div>
+    {% else %}<div class="big">All square</div>{% endif %}
+    <p class="small muted">Worked out from who paid (by account) against each purchase's share. Transfers between your own accounts are left out. The running tally below includes repayments.</p></div>
+</div>
+
+
+<div class="card" id="tally"><h3>Settling up, so far</h3>
+  {% if tally.balance > 50 %}<div class="big">{{ partner }} owes you {{ money(tally.balance) }}</div>
+  {% elif tally.balance < -50 %}<div class="big">You owe {{ partner }} {{ money(-tally.balance) }}</div>
+  {% else %}<div class="big">All square</div>{% endif %}
+  <p class="small muted">{{ partner }}'s share of what you paid{% if tally.start %} since {{ tally.start }}{% endif %}: {{ money(tally.owed) }}. Paid back to you: {{ money(tally.received) }}.{% if tally.waived %} Waived: {{ money(tally.waived) }}.{% endif %}{% if tally.paid %} You paid {{ partner }}: {{ money(tally.paid) }}.{% endif %}</p>
+
+  <form class="grid2" method="post" action="/reckoning/pay" style="margin-top:14px">
+    <label class="f">{{ partner }} paid you back ($)<input type="text" inputmode="decimal" name="amount" placeholder="0.00" required></label>
+    <label class="f">On<input type="date" name="date" value="{{ today }}" required></label>
+    <label class="f">Note (optional)<input type="text" name="note" maxlength="80" placeholder="e-transfer"></label>
+    <label class="f">Which way<select name="direction"><option value="from_partner">{{ partner }} paid me</option><option value="to_partner">I paid {{ partner }}</option></select></label>
+    <div><button class="btn" type="submit">Record payment</button></div>
+  </form>
+
+  {% if cands %}<div class="label" style="margin-top:16px">Already in your statements? Mark the deposit</div>
+  <p class="small muted">A repayment deposit counts as income until you mark it. Marking it keeps it out of your income and counts it here.</p>
+  {% for c in cands %}<form class="row notez" method="post" action="/reckoning/pay/mark"><input type="hidden" name="txn_id" value="{{ c.id }}">
+    <span class="small">{{ c.posted_date }} &middot; {{ c.acct }} &middot; {{ c.description_raw[:34] }} &middot; <strong>{{ money(-c.amount_cents) }}</strong></span><span class="depb"><input type="text" inputmode="decimal" name="amount" value="{{ '%.2f' % (-c.amount_cents / 100) }}" aria-label="Amount that counts" style="width:96px;margin:0"><button class="btn ghost" type="submit">Repayment</button></span></form>{% endfor %}{% endif %}
+
+  {% if tally.payments %}<div class="label" style="margin-top:16px">Payments counted</div>
+  {% for p in tally.payments %}<form class="row notez" method="post" action="/reckoning/pay/remove"><input type="hidden" name="key" value="{{ p.key }}">
+    <span class="small">{{ p.date }} &middot; <strong>{% if p.waived %}Waived {{ money(p.cents) }}{% elif p.cents > 0 %}{{ partner }} paid you {{ money(p.cents) }}{% if p.full and p.full != p.cents %} (counted of {{ money(p.full) }}){% endif %}{% else %}You paid {{ partner }} {{ money(-p.cents) }}{% endif %}</strong>{% if p.note %} &middot; {{ p.note }}{% endif %}{% if p.acct %} &middot; from {{ p.acct }}{% endif %}</span>
+    <button class="btn ghost" type="submit">{{ 'Undo' if p.src == 'txn' else 'Remove' }}</button></form>{% endfor %}{% endif %}
+
+  {% if tally.balance > 50 %}<form class="row" method="post" action="/reckoning/waive" style="margin-top:16px"><label class="f" style="margin:0">Waive some or all of what is owed<input type="text" inputmode="decimal" name="amount" value="{{ '%.2f' % (tally.balance / 100) }}" style="width:120px"></label>
+    <button class="btn ghost" type="submit" data-confirm="Let {{ partner }} off this much? It counts as settled.">Waive it</button></form>{% endif %}
+  <form class="row" method="post" action="/reckoning/tally-start" style="margin-top:16px">
+    <label class="f" style="margin:0">Start counting from<input type="month" name="month" value="{{ tally.start or '' }}"></label><button class="btn ghost" type="submit">Set</button></form>
+  <p class="small muted">Earlier months you have already squared up can be left out.</p>
+</div>
+
+{% if other_pct >= 15 %}<div class="notice"><strong>{{ other_pct }}% of your spending is filed under Other.</strong> <a href="/review/sort">Sort the Other pile</a> and the breakdown below will mean more.</div>{% endif %}
+<div class="card"><h3>Where your share went</h3>
+  {% for name, cents in r.by_category %}<div class="bar"><span>{{ name }}</span><div class="meter"><i style="width:{{ (100 * cents / biggest)|round|int if cents > 0 else 0 }}%"></i></div><strong>{{ money(cents) }}</strong></div>
+  {% else %}<p class="muted">Nothing yet.</p>{% endfor %}</div>
+
+<form class="card" method="post" action="/reckoning/partner"><h3>Your partner</h3>
+  <p class="small muted">Only a name for labels, and the split proposed when Alberich knows nothing.</p>
+  <div class="grid2"><label class="f">Called<input type="text" name="name" maxlength="30" value="{{ partner }}"></label>
+    <label class="f">Default share that is yours (%)<input type="number" name="default_bps" min="0" max="100" value="{{ default_pct }}"></label></div>
+  <button class="btn" type="submit">Save</button></form>
+
+{% if rules %}<div class="card"><h3>Standing rules</h3>
+  {% for ru in rules %}<form method="post" action="/review/rule/drop" class="row" style="margin-bottom:8px"><input type="hidden" name="merchant_id" value="{{ ru.id }}">
+    <span>{{ ru.name }}: your share {{ (ru.my_bps / 100)|round|int }}%</span><button class="btn ghost" type="submit">Remove</button></form>{% endfor %}</div>{% endif %}
+{% endblock %}

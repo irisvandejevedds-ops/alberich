@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Alberich: a receipt{% endblock %}
+{% block body %}
+<p class="small"><a href="/receipts">&larr; The Receipts</a></p>
+<h1>{{ (r.merchant or 'Receipt')|title }}</h1>
+<p><span class="chip {{ chip[r.status][0] }}">{{ chip[r.status][1] }}</span> <span class="muted">{{ r.purchase_date or '' }}{% if r.total_cents is not none %} · {{ money(r.total_cents) }}{% endif %}{% if r.ocr_engine %} · read by {{ r.ocr_engine }}{% endif %}</span></p>
+{% if r.note %}<div class="notice">{{ r.note }}</div>{% endif %}
+
+<div class="grid2">
+ <div class="card"><h3>The picture</h3>
+  {% if r.kind == 'image' %}<img class="rpic" src="/receipts/{{ r.id }}/image" alt="The receipt photograph">{% else %}<p class="small">A PDF receipt. <a href="/receipts/{{ r.id }}/image">Open it</a>.</p>{% endif %}</div>
+ <div>
+  {% if txn %}
+  <div class="card aged"><h3>Bank charge</h3><p>{{ txn.posted_date }} · {{ txn.acct }}<br><strong>{{ txn.description_raw }}</strong> {{ money(txn.amount_cents) }}</p>
+    <p class="small muted">{{ li_count }} item{{ 's' if li_count != 1 }} from this receipt {{ 'are' if li_count != 1 else 'is' }} waiting in <a href="/review?month={{ txn.posted_date[:7] }}">the Review</a>.{% if r.status != 'matched' %} Fix the receipt below before they appear.{% endif %}</p>
+    <form method="post" action="/receipts/{{ r.id }}/unlink"><button class="btn ghost" type="submit">Not this charge</button></form></div>
+  {% elif r.total_cents is not none and r.purchase_date %}
+  <div class="card aged"><h3>Which bank charge?</h3>
+    {% if cands %}{% for c in cands %}<form method="post" action="/receipts/{{ r.id }}/match" class="row" style="margin-bottom:10px"><input type="hidden" name="txn_id" value="{{ c.txn.id }}">
+      <span class="small">{{ c.txn.posted_date }} · {{ c.txn.acct }}<br><strong>{{ c.txn.description_raw }}</strong> {{ money(c.txn.amount_cents) }}{% if not c.exact %} <span class="chip gold">with tip?</span>{% endif %}</span>
+      <button class="btn" type="submit">This one</button></form>{% endfor %}
+    {% else %}<p class="small muted">No unmatched charge of {{ money(r.total_cents) }} around {{ r.purchase_date }} yet. When the statement is filed, Alberich will match it himself.</p>{% endif %}</div>
+  {% endif %}
+
+  <form class="card" method="post" action="/receipts/{{ r.id }}/save"><h3>What Alberich read</h3>
+   <div class="grid2"><label class="f">Shop<input type="text" name="merchant" value="{{ r.merchant }}" maxlength="60"></label>
+     <label class="f">Date<input type="text" name="date" value="{{ r.purchase_date or '' }}" placeholder="2026-09-12" inputmode="numeric"></label>
+     <label class="f">Total<input type="text" name="total" value="{{ '%.2f' % (r.total_cents / 100) if r.total_cents is not none else '' }}" inputmode="decimal"></label>
+     <label class="f">Tax<input type="text" name="tax" value="{{ '%.2f' % (r.tax_cents / 100) if r.tax_cents is not none else '' }}" inputmode="decimal"></label></div>
+   <div class="label">Items (clear the name to remove a line)</div>
+   <table class="t"><tbody>
+   {% for l in lines %}<tr><td><input type="text" name="desc" value="{{ l.description }}" maxlength="80"></td><td style="width:110px"><input type="text" name="amt" value="{{ '%.2f' % (l.amount_cents / 100) }}" inputmode="decimal"></td></tr>{% endfor %}
+   {% for _ in range(3) %}<tr><td><input type="text" name="desc" maxlength="80" placeholder="Add a line"></td><td><input type="text" name="amt" inputmode="decimal" placeholder="0.00"></td></tr>{% endfor %}
+   </tbody></table>
+   <p class="small muted">Items add up to {{ money(lines_sum) }}{% if r.tax_cents %}, tax {{ money(r.tax_cents) }}{% endif %}.</p>
+   {% if r.verdict == 'mismatch' or r.verdict == 'incomplete' %}<label class="check"><input type="checkbox" name="accept">Use it as it is, even though it does not add up</label>{% endif %}
+   <button class="btn" type="submit">Save and check</button></form>
+ </div>
+</div>
+
+<details class="fold card aged"><summary>More</summary>
+  <div class="row">
+    <form method="post" action="/receipts/{{ r.id }}/reread"><button class="btn ghost" type="submit">Read the picture again</button></form>
+    <form method="post" action="/receipts/{{ r.id }}/delete" data-confirm="Remove this receipt?"><button class="btn danger" type="submit">Remove</button></form></div>
+  {% if llm.key_present and not llm.killed %}
+  <form method="post" action="/receipts/{{ r.id }}/model" data-busy="The Warlock is reading the receipt. This can take half a minute." style="margin-top:14px"><h3>Let the Warlock read it</h3>
+    <p class="small">For a crumpled or faint receipt. The whole picture is sent to Anthropic. It may show shop, items, and the last digits of a card. Used this month: {{ '%.1f' % llm.spent_cents }}&cent; of {{ llm.cap_cents }}&cent;.</p>
+    <label class="check"><input type="checkbox" name="consent">Send this picture</label><button class="btn" type="submit" data-needs-consent>Have the Warlock read it</button></form>
+  {% endif %}
+  <details class="fold" style="margin-top:12px"><summary>The raw text</summary><pre class="excerpt">{{ r.ocr_text }}</pre></details>
+</details>
+{% endblock %}
