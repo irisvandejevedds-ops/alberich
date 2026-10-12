@@ -23,7 +23,8 @@
 {% if new_token %}
 <div class="card aged">
   <h3>Scan this with your phone</h3>
-  <details class="fold"><summary>If nothing happens</summary><p class="small">Copy the long link below into the app: Settings, Computer, paste the pairing link. The code and the key are shown only once. The phone needs to be on the same Wi-Fi as this computer, or on Tailscale.</p></details>
+  <details class="fold"><summary>If nothing happens</summary><p class="small">On the phone with the Alberich app installed, tap the button above. Otherwise Copy the long link below into the app: Settings, Computer, paste the pairing link. The code and the key are shown only once. The phone needs to be on the same Wi-Fi as this computer, or on Tailscale.</p></details>
+  <p><a class="btn" href="{{ tap }}">Pair the phone I am holding</a></p>
   <div class="qr">{{ qr|safe }}</div>
   <label class="f">Pairing link<input type="text" readonly value="{{ link }}" onfocus="this.select()"></label>
   <p class="small muted">{% for u in urls %}{{ u.label }}: {{ u.url }}{% if not loop.last %} &middot; {% endif %}{% endfor %}{% if not urls %}No address found to give the phone.{% endif %}</p>

@@ -22,7 +22,7 @@ HERE = pathlib.Path(__file__).parent
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 PUBLIC_PREFIXES = ("/static/", "/healthz", "/login", "/setup", "/sw.js", "/manifest.webmanifest", "/offline")
 NAV = [("Hall", "/", "castle"), ("Purse", "/activities", "pouch"), ("Ledgers", "/ledgers", "ledger"), ("Receipts", "/receipts", "scroll"),
-       ("Review", "/review", "check"), ("Treasury", "/treasury", "chest"), ("Warlock", "/warlock", "hat"), ("Ravens", "/settings/notifications", "raven")]
+       ("Review", "/review", "check"), ("Treasury", "/treasury", "chest"), ("Warlock", "/warlock", "hat"), ("Ravens", "/settings/notifications", "raven"), ("Phone", "/settings/phone", "gift")]
 STARTERS = [("Ordered in", "takeout", "order in", 4000, 3), ("Drinks out", "drinks", "go out for drinks", 6000, 3),
             ("Toy", "toy", "buy a toy", 5000, 2), ("Shopping", "shopping", "go shopping", 12000, 2),
             ("Tickets", "ticket", "get tickets to something", 9000, 2),
@@ -551,7 +551,8 @@ def create_app():
         urls = pairing.endpoints(cfg, request.headers.get("host", ""))
         link = pairing.link(cfg, urls, new_token, name=pairing.computer_name()) if new_token else None
         apk = cfg.data_dir / "apk" / widget_routes.APK_NAME
-        return render(request, db, "phone.html", phones=tokens.listing(db, "sync"), new_token=new_token, link=link, urls=urls, qr=pairing.qr_svg(link) if link else None,
+        tap = ("intent://" + link[len("alberich://"):] + f"#Intent;scheme=alberich;package={widget_routes.PACKAGE};end") if link else None
+        return render(request, db, "phone.html", tap=tap, phones=tokens.listing(db, "sync"), new_token=new_token, link=link, urls=urls, qr=pairing.qr_svg(link) if link else None,
                       tls_ready=pairing.pin(cfg) is not None, apk=apk.exists(), apk_kb=(apk.stat().st_size // 1024) if apk.exists() else 0)
 
     @app.get("/settings/phone", response_class=HTMLResponse)

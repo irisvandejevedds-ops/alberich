@@ -205,6 +205,7 @@ def test_the_pairing_page_makes_a_code_with_every_address_and_the_pin(c, monkeyp
     admin.post("/login", data={"passphrase": PASS})
     assert "Pair a phone" in admin.get("/settings/phone").text
     page = admin.post("/settings/phone/new", data={"name": "Pixel"}, headers={"host": "box.tail1234.ts.net:8443"}).text
+    assert "href=\"intent://pair?" in page and "package=app.alberich.widget" in page and "Pair the phone I am holding" in page
     assert "<svg" in page and 'class="qr"' in page
     link = next(x for x in page.split('"') if x.startswith("alberich://pair?")).replace("&amp;", "&")
     q = parse_qs(urlparse(link).query)
