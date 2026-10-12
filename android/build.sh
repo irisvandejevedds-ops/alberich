@@ -11,6 +11,10 @@ if [ ! -f "$KS" ]; then
     -keyalg RSA -keysize 2048 -validity 9125 -dname "CN=Alberich widget, O=Home" >/dev/null 2>&1
 fi
 PASS="$(cat "$KS_DIR/ks.pass")"
+# bundle the app's pages (the same files the browser demo uses) into the APK
+rm -rf assets/web; mkdir -p assets/web/fonts
+for f in index.html app.js app.css frames.css assets.js config.js core.js store.js manifest.webmanifest icon-192.png icon-512.png; do cp ../web/$f assets/web/$f; done
+cp ../web/fonts/*.woff2 assets/web/fonts/
 OUT=build; rm -rf $OUT; mkdir -p $OUT/gen $OUT/classes
 $BT/aapt2 compile --dir res -o $OUT/res.zip
 $BT/aapt2 link -o $OUT/base.apk -I $JAR --manifest AndroidManifest.xml --min-sdk-version 26 --target-sdk-version 34 \

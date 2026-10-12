@@ -28,12 +28,11 @@ public class PouchWidget extends AppWidgetProvider {
     @Override
     public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
         paint(c, m, ids);
-        Sync.scheduleSync(c, false);
-        Sync.ensurePeriodic(c);
+        Local.ensurePeriodic(c);
     }
 
     @Override
-    public void onEnabled(Context c) { Sync.ensurePeriodic(c); }
+    public void onEnabled(Context c) { Local.ensurePeriodic(c); }
 
     @Override
     public void onAppWidgetOptionsChanged(Context c, AppWidgetManager m, int id, Bundle options) {
@@ -98,9 +97,8 @@ public class PouchWidget extends AppWidgetProvider {
         RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.widget);
         rv.setImageViewBitmap(R.id.bg, Pixel.wall(c, W, H));
 
-        JSONObject state = null;
-        try { String raw = Store.cache(c); if (!raw.isEmpty()) state = new JSONObject(raw); } catch (JSONException e) { state = null; }
-        String mood = state == null ? "neutral" : state.optString("mood", "neutral");
+        JSONObject state = Local.state(c);
+        String mood = state.optString("mood", "neutral");
         Bitmap[] hf = Pixel.headFrames(c, mood, Math.round(38 * d));
         rv.setImageViewBitmap(R.id.h0, hf[0]); rv.setImageViewBitmap(R.id.h1, hf[1]); rv.setImageViewBitmap(R.id.h2, hf[2]); rv.setImageViewBitmap(R.id.h3, hf[3]);
         int titleW = W - 2 * pad - Math.round(48 * d) * 2;
@@ -109,17 +107,15 @@ public class PouchWidget extends AppWidgetProvider {
         PendingIntent openPi = PendingIntent.getActivity(c, 1, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         rv.setOnClickPendingIntent(R.id.title, openPi);
         rv.setOnClickPendingIntent(R.id.headflip, openPi);
-        rv.setImageViewBitmap(R.id.refresh, Pixel.refresh(c, Store.pending(c) > 0 || Store.cacheAgeMs(c) > 90 * 60 * 1000L));
+        rv.setImageViewBitmap(R.id.refresh, Pixel.refresh(c, Desk.stale(c)));
         rv.setViewVisibility(R.id.refresh, View.VISIBLE);
         rv.setViewVisibility(R.id.spin, View.GONE);
         rv.setOnClickPendingIntent(R.id.refresh, PendingIntent.getActivity(c, 2, new Intent(c, RefreshActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
 
         List<JSONObject> list = tiles(state);
-        boolean connected = Store.connected(c);
-        rv.setViewVisibility(R.id.empty, (!connected || list.isEmpty()) ? View.VISIBLE : View.GONE);
-        if (!connected) rv.setImageViewBitmap(R.id.empty, Pixel.hint(c, "Open the Alberich app once to connect this widget.", W));
-        else if (list.isEmpty()) rv.setImageViewBitmap(R.id.empty, Pixel.hint(c, "Fetching your pouches...", W));
+        rv.setViewVisibility(R.id.empty, list.isEmpty() ? View.VISIBLE : View.GONE);
+        if (list.isEmpty()) rv.setImageViewBitmap(R.id.empty, Pixel.hint(c, "Open Alberich once to set up your pouches.", W));
         int n = Math.min(list.size(), COLS_MAX * ROWS_MAX);
 
         int cw = W - 2 * pad, ch = H - 2 * pad - hdr;
@@ -148,8 +144,8 @@ public class PouchWidget extends AppWidgetProvider {
                 rv.setViewVisibility(slot, View.VISIBLE);
                 rv.setImageViewBitmap(slot, Pixel.tile(c, t.optString("name"), t.optString("icon"), t.optString("status"),
                         t.optInt("remaining"), t.optInt("allotted"), tw, th));
-                Intent log = new Intent(c, LogReceiver.class).putExtra("id", t.optInt("id")).putExtra("name", t.optString("name"));
-                rv.setOnClickPendingIntent(slot, PendingIntent.getBroadcast(c, 1000 + t.optInt("id"), log,
+                Intent log = new Intent(c, LogReceiver.class).putExtra("id", t.optString("id")).putExtra("name", t.optString("name"));
+                rv.setOnClickPendingIntent(slot, PendingIntent.getBroadcast(c, 1000 + (t.optString("id").hashCode() & 0xFFFFF), log,
                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
             }
         }

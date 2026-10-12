@@ -1,0 +1,8 @@
+{
+  "name": "alberich-site",
+  "compatibility_date": "2026-09-01",
+  // static files only: the landing page, the demo, the browser app and the downloads (see build.py)
+  "assets": { "directory": "./dist", "html_handling": "auto-trailing-slash", "not_found_handling": "404-page" },
+  "routes": [{ "pattern": "alberich.jessevriend.com", "custom_domain": true }],
+  "observability": { "enabled": false }
+}

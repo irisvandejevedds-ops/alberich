@@ -1,0 +1,7 @@
+body[data-platform="android"] #phone,body[data-platform="desktop"] #desktop{order:-1}
+.wrap{display:flex;flex-direction:column}.wrap>.hero{order:-3}
+.choice .sub{margin:2px 0 12px}
+.choice .ver{margin-left:8px}
+.top{grid-template-columns:1fr}.brand{grid-column:1}
+.card code{background:rgba(0,0,0,.12);padding:0 4px}
+.card a.btn{color:var(--ink)}.card a.btn.ghost{color:#24508A}

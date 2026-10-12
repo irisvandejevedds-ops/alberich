@@ -10,4 +10,5 @@ sudo rm -rf /opt/finapp/app.old
 [ -d /opt/finapp/app ] && sudo mv /opt/finapp/app /opt/finapp/app.old
 sudo mv /opt/finapp/app.new /opt/finapp/app
 sudo systemctl restart finapp-web finapp-worker
+systemctl is-enabled finapp-sync >/dev/null 2>&1 && sudo systemctl restart finapp-sync || true
 echo "deployed; services restarted"

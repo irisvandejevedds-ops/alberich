@@ -14,6 +14,10 @@ class Config:
         self.require_ts_header = e.get("FINAPP_REQUIRE_TS_HEADER", "1") == "1"
         self.ts_logins = {x.strip().lower() for x in e.get("FINAPP_TS_LOGINS", "").split(",") if x.strip()}
         self.cookie_secure = e.get("FINAPP_COOKIE_SECURE", "1") == "1"
+        # the companion listener for phones: same app, but it answers only the sync route, over TLS the phone pins
+        self.sync_only = e.get("FINAPP_SYNC_ONLY", "0") == "1"
+        self.sync_port = int(e.get("FINAPP_SYNC_PORT", "8121"))
+        self.sync_urls = [x.strip() for x in e.get("FINAPP_SYNC_URLS", "").split(",") if x.strip()]
         self.vapid_pem = e.get("FINAPP_VAPID_PEM", "")
         self.vapid_subject = e.get("FINAPP_VAPID_SUBJECT", "mailto:admin@example.invalid")
         k = e.get("FINAPP_FILE_KEY", "")
@@ -24,6 +28,10 @@ class Config:
         # Assumed list prices in cents per million tokens; override via env if pricing differs.
         self.llm_in_cents_per_mtok = float(e.get("FINAPP_LLM_IN_CENTS_PER_MTOK", "300"))
         self.llm_out_cents_per_mtok = float(e.get("FINAPP_LLM_OUT_CENTS_PER_MTOK", "1500"))
+
+    @property
+    def tls_dir(self):
+        return self.data_dir / "tls"
 
     @property
     def db_path(self):

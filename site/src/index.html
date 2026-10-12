@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#4A2E18">
+<meta name="description" content="Alberich is a spending pet for your phone: you keep a few pouches of treats, and a dwarf who guards the gold gets happier while you stay on budget.">
+<title>Alberich</title>
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="frames.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body data-platform="unknown">
+<header class="top"><a class="brand" href="./">Alberich</a></header>
+<main class="wrap">
+  <section class="hero large">
+    <div class="stage" id="pet"></div>
+    <div class="herotext">
+      <p class="label">A spending pet</p>
+      <h1>Alberich</h1>
+      <p>Split what you can spend into pouches: coffee, takeout, a night out. Alberich guards the gold. He stays happy while you spend at a steady pace, and grumbles when you rush it.</p>
+    </div>
+  </section>
+
+  <div class="card choice" id="phone">
+    <input type="checkbox" id="i-phone" class="infotoggle">
+    <div class="cardhead"><h3>Phone</h3><label for="i-phone" class="infobtn" aria-label="More about this">i</label></div>
+    <div class="callout">For Android. Your pouches are kept on your phone and nowhere else, and it works with no internet. Open the downloaded file and let Android install it (it will ask permission for your browser the first time, because the app is not on a store). Then add the widget: press and hold an empty spot on your home screen, choose Widgets, find Alberich, and drag it out. Reminders come from the app itself, so allow notifications when it asks.</div>
+    <p class="sub">The app, the reminders and the home-screen widget, for Android.</p>
+    <a class="btn" href="downloads/alberich.apk" download>Download for Android</a>
+    <span class="small muted ver">__APK_INFO__</span>
+  </div>
+
+  <div class="card choice" id="desktop">
+    <input type="checkbox" id="i-desktop" class="infotoggle">
+    <div class="cardhead"><h3>Computer</h3><label for="i-desktop" class="infobtn" aria-label="More about this">i</label></div>
+    <div class="callout">Optional. It reads your bank and card statements and works out your spending credits from them, files receipts, and keeps a copy of your phone's pouches. It needs Python 3.10 or newer. Unzip the folder, run <code>python3 start.py</code> (on Windows <code>py start.py</code>), and your browser opens; choose a passphrase. To connect your phone, open the Phone page, make a pairing code and scan it with your phone's camera. They talk over your home Wi-Fi; nothing goes through the internet. If you use Tailscale, the pairing code includes your Tailscale address too. Reading photographed receipts needs the Tesseract program, and the assistant needs your own Anthropic key; both are switched off otherwise.</div>
+    <p class="sub">Statements, receipts and a copy of your pouches. Connects to your phone over Wi-Fi.</p>
+    <a class="btn ghost" href="downloads/alberich-desktop.zip" download>Download for computer</a>
+    <span class="small muted ver">__DESKTOP_INFO__</span>
+  </div>
+
+  <div class="card choice" id="try">
+    <input type="checkbox" id="i-try" class="infotoggle">
+    <div class="cardhead"><h3>In your browser</h3><label for="i-try" class="infobtn" aria-label="More about this">i</label></div>
+    <div class="callout">The same app, running in this browser tab. The demo is filled with made-up pouches so you can look around. The other one starts empty and keeps your pouches in this browser only, which works on an iPhone too. Outside the Android app there are no reminders and no widget.</div>
+    <p class="sub">The same app, no install.</p>
+    <div class="row"><a class="btn ghost" href="demo/">Look around (demo)</a><a class="btn ghost" href="app/">Use it here</a></div>
+  </div>
+</main>
+<script src="assets.js"></script>
+<script src="site.js"></script>
+</body>
+</html>

@@ -328,3 +328,5 @@ body.loading #loadbar{display:block}
 .depb .btn{padding:6px 10px;font-size:13px}
 
 [hidden]{display:none !important}
+
+.qr{display:flex;justify-content:center;margin:6px 0 12px}.qr svg{width:min(300px,100%);height:auto;image-rendering:pixelated}

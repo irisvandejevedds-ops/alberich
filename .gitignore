@@ -13,3 +13,7 @@ android/build/
 *.keystore
 *.jks
 *.pass
+android/assets/web/
+site/dist/
+site/.wrangler/
+!release/alberich.apk

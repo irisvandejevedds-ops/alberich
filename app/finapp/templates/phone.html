@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Alberich: the phone{% endblock %}
+{% block body %}
+<h1>The Phone</h1>
+<p class="muted">The Alberich app on your phone keeps your pouches and taps on the phone itself. Pairing connects it to this computer.</p>
+
+<div class="card">
+  <h3>The phone app</h3>
+  <details class="fold"><summary>What it is</summary><p class="small">A small app ({{ apk_kb }} KB) with the pouches, Alberich, reminders and the home-screen widget. It works on its own, with no server. Paired with this computer, it brings in the credits worked out from your statements and keeps a copy of your taps here. It is signed with this computer's own key and is not on any store, so Android will ask permission to install from your browser the first time. Installing it over an older Alberich widget app keeps the widget but starts with empty pouches until you pair.</p></details>
+  {% if apk %}<a class="btn" href="/download/alberich-widget.apk">Download the phone app</a>{% else %}<p class="small">The phone app has not been built on this computer yet.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h3>Pair a phone</h3>
+  <details class="fold"><summary>How pairing works</summary><p class="small">Give the phone a name, make a pairing code, scan it with the phone's camera app and tap the link, or copy the link into the app under Settings. The code holds a secret key, so only show it to the phone you are pairing. It works over your home Wi-Fi, and over Tailscale if you use it. Cancel a key below to unpair that phone.</p></details>
+  {% if not tls_ready %}<div class="error">The home Wi-Fi listener is not set up on this computer yet, so only Tailscale addresses will work. Run the companion setup once to enable it.</div>{% endif %}
+  <form method="post" action="/settings/phone/new" class="row">
+    <label class="f" style="margin:0;flex:1 1 200px">Name<input type="text" name="name" value="My phone" maxlength="40"></label>
+    <button class="btn" type="submit">Make a pairing code</button>
+  </form>
+</div>
+
+{% if new_token %}
+<div class="card aged">
+  <h3>Scan this with your phone</h3>
+  <details class="fold"><summary>If nothing happens</summary><p class="small">Copy the long link below into the app: Settings, Computer, paste the pairing link. The code and the key are shown only once. The phone needs to be on the same Wi-Fi as this computer, or on Tailscale.</p></details>
+  <div class="qr">{{ qr|safe }}</div>
+  <label class="f">Pairing link<input type="text" readonly value="{{ link }}" onfocus="this.select()"></label>
+  <p class="small muted">{% for u in urls %}{{ u.label }}: {{ u.url }}{% if not loop.last %} &middot; {% endif %}{% endfor %}{% if not urls %}No address found to give the phone.{% endif %}</p>
+</div>
+{% endif %}
+
+<div class="card tscroll"><h3>Paired phones</h3>
+  <table class="t"><thead><tr><th>Name</th><th>Made</th><th>Last synced</th><th></th></tr></thead><tbody>
+  {% for k in phones %}<tr><td>{{ k.name }}</td><td class="small">{{ k.created_at[:10] }}</td><td class="small">{{ (k.last_used_at or 'never')[:16]|replace('T', ' ') }}</td>
+    <td>{% if k.revoked_at %}<span class="chip line">cancelled</span>{% else %}<form method="post" action="/settings/phone/revoke"><input type="hidden" name="id" value="{{ k.id }}"><button class="btn ghost" type="submit">Cancel</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">No phones yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+{% endblock %}
