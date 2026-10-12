@@ -31,8 +31,9 @@ public class MainActivity extends Activity {
         script = Typeface.createFromAsset(getAssets(), "script.otf");
         getWindow().setStatusBarColor(Color.parseColor("#5B3A82"));
         handle(getIntent());
-        if (getIntent().getBooleanExtra("open_web", false) && Store.connected(this)) {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Store.url(this))));
+        boolean setupLink = getIntent().getData() != null, settings = getIntent().getBooleanExtra("settings", false);
+        if (Store.connected(this) && !settings && !setupLink) {
+            startActivity(new Intent(this, WebActivity.class));
             finish();
             return;
         }
@@ -120,7 +121,7 @@ public class MainActivity extends Activity {
             new Thread(this::saveAndTest).start();
         }));
         col.addView(button("Send saved taps now", v -> new Thread(this::sendAll).start()));
-        col.addView(button("Open Alberich", v -> { if (Store.connected(this)) startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Store.url(this)))); }));
+        col.addView(button("Open Alberich", v -> { if (Store.connected(this)) startActivity(new Intent(this, WebActivity.class)); }));
         col.addView(text("To add the widget: press and hold an empty spot on your home screen, choose Widgets, find Alberich, and drag it out. Stretch it to show more pouches.", 14, ink, pixel));
         setContentView(sv);
         refreshStatus();
