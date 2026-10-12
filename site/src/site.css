@@ -5,3 +5,6 @@ body[data-platform="android"] #phone,body[data-platform="desktop"] #desktop{orde
 .top{grid-template-columns:1fr}.brand{grid-column:1}
 .card code{background:rgba(0,0,0,.12);padding:0 4px}
 .card a.btn{color:var(--ink)}.card a.btn.ghost{color:#24508A}
+.callout .steps{margin:8px 0 10px;padding-left:22px}.callout .steps li{margin:0 0 6px}
+#connect{order:1}#try{order:2}
+.card code,.callout code{font:inherit;font-size:.92em;word-break:break-all}

@@ -71,4 +71,4 @@ def link(cfg, urls, token, name=""):
 
 def qr_svg(text):
     import segno
-    return segno.make(text, error="m").svg_inline(scale=5, dark="#16351F", light="#FBFEF2", border=2, omitsize=False)
+    return segno.make(text, error="m").svg_inline(scale=1, dark="#16351F", light="#FBFEF2", border=3, omitsize=True)

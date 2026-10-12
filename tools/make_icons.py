@@ -1,4 +1,4 @@
-"""Render PWA, notification and Android launcher icons. The app icon is the wordmark's Fraktur "A" in gold on a royal-purple circle.
+"""Render PWA, notification and Android launcher icons. The app icon is the wordmark's Fraktur "A" in gold on royal purple, on the phone and in the browser alike.
 Run with the app venv (needs Pillow)."""
 import pathlib, sys
 from PIL import Image, ImageDraw, ImageFont
@@ -58,8 +58,8 @@ save(mk, OUT / "icon-maskable-512.png", 512)
 badge = letter(0.9, shadow=False, color=(255, 255, 255, 255))
 save(badge, OUT / "badge.png", 96)
 
-# Android adaptive launcher icon: purple background colour + transparent foreground with the A in the safe zone
-fg = letter(0.50, canvas=432, color=PURPLE, shadow_color=GOLD_SHADOW)
+# Android adaptive launcher icon: purple background colour + transparent foreground with the gold A in the safe zone
+fg = letter(0.50, canvas=432)
 (AND / "drawable-xxxhdpi").mkdir(parents=True, exist_ok=True)
 fg.save(AND / "drawable-xxxhdpi/ic_launcher_fg.png", "PNG")
 (AND / "mipmap-anydpi-v26").mkdir(parents=True, exist_ok=True)
@@ -70,9 +70,6 @@ fg.save(AND / "drawable-xxxhdpi/ic_launcher_fg.png", "PNG")
     <monochrome android:drawable="@drawable/ic_launcher_fg"/>
 </adaptive-icon>
 ''')
-(AND / "values/colors.xml").write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_bg">#E0AC3A</color>\n</resources>\n')
-inv = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-ImageDraw.Draw(inv).ellipse([0, 0, S - 1, S - 1], fill=GOLD_BG)
-inv.alpha_composite(letter(0.80, color=PURPLE, shadow_color=GOLD_SHADOW))
-save(inv, AND / "mipmap-xxxhdpi/ic_launcher.png", 192)
+(AND / "values/colors.xml").write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_bg">#5B3A82</color>\n</resources>\n')
+save(c, AND / "mipmap-xxxhdpi/ic_launcher.png", 192)
 print(sorted(p.name for p in OUT.iterdir()))

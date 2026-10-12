@@ -329,4 +329,5 @@ body.loading #loadbar{display:block}
 
 [hidden]{display:none !important}
 
-.qr{display:flex;justify-content:center;margin:6px 0 12px}.qr svg{width:min(300px,100%);height:auto;image-rendering:pixelated}
+.qr{display:flex;justify-content:center;margin:6px 0 12px}.qr svg{display:block;width:min(320px,100%);height:auto;aspect-ratio:1;image-rendering:pixelated;shape-rendering:crispEdges}
+.card p{overflow-wrap:anywhere}

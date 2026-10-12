@@ -42,6 +42,13 @@
     <span class="small muted ver">__DESKTOP_INFO__</span>
   </div>
 
+  <div class="card choice" id="connect">
+    <input type="checkbox" id="i-connect" class="infotoggle">
+    <div class="cardhead"><h3>Connect them</h3><label for="i-connect" class="infobtn" aria-label="More about this">i</label></div>
+    <div class="callout"><b>One time, about two minutes.</b><ol class="steps"><li>Install the phone app and the computer package, both above.</li><li>On the computer, run <code>python3 start.py</code> (Windows: <code>py start.py</code>). Your browser opens the Phone page. If it does not, go to <code>http://127.0.0.1:8100/settings/phone</code>; it is also the Phone tab at the end of the menu.</li><li>Choose a passphrase if it asks, then press <b>Make a pairing code</b>.</li><li>Scan the code with your phone's camera and tap the link it shows. Android opens Alberich and asks you to confirm.</li><li>In Alberich on the phone, open Settings and press <b>Sync now</b>. Your credits and pouches come across.</li></ol><b>If the code will not scan</b>, copy the long pairing link under it, and in the phone app go to Settings, Computer, and paste it in. If your browser is open on the phone itself, tap <b>Pair the phone I am holding</b> instead.<br><br><b>Away from home.</b> At home, the phone finds the computer over Wi-Fi. Elsewhere it needs both devices on Tailscale, which the pairing code includes automatically when the computer has it. Nothing goes through the internet otherwise.<br><br><b>Firewall.</b> If your computer asks whether Python may accept connections, allow it on private networks. That is how the phone reaches the computer.<br><br><b>To disconnect</b>, cancel the phone in the Paired phones list on the Phone page.</div>
+    <p class="sub">Pair the phone app with the computer.</p>
+  </div>
+
   <div class="card choice" id="try">
     <input type="checkbox" id="i-try" class="infotoggle">
     <div class="cardhead"><h3>In your browser</h3><label for="i-try" class="infobtn" aria-label="More about this">i</label></div>
