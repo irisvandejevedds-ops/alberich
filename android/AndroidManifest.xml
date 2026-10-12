@@ -25,8 +25,7 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info"/>
         </receiver>
-        <activity android:name=".RefreshActivity" android:exported="false" android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:excludeFromRecents="true" android:noHistory="true" android:taskAffinity="" android:launchMode="singleInstance"/>
+        <receiver android:name=".RefreshReceiver" android:exported="false"/>
         <receiver android:name=".LogReceiver" android:exported="false"/>
         <receiver android:name=".NotifyReceiver" android:exported="false"/>
         <receiver android:name=".BootReceiver" android:exported="true">

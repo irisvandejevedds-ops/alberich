@@ -110,7 +110,7 @@ public class PouchWidget extends AppWidgetProvider {
         rv.setImageViewBitmap(R.id.refresh, Pixel.refresh(c, Desk.stale(c)));
         rv.setViewVisibility(R.id.refresh, View.VISIBLE);
         rv.setViewVisibility(R.id.spin, View.GONE);
-        rv.setOnClickPendingIntent(R.id.refresh, PendingIntent.getActivity(c, 2, new Intent(c, RefreshActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION),
+        rv.setOnClickPendingIntent(R.id.refresh, PendingIntent.getBroadcast(c, 2, new Intent(c, RefreshReceiver.class),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
 
         List<JSONObject> list = tiles(state);
