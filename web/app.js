@@ -63,7 +63,9 @@
 
   /** Everything the pages show, worked out from the pouches and logs; the pet remembers its wellbeing between looks. */
   function compute() {
-    var d = now(), month = C.monthOf(d), states = C.allStates(S.acts, month, d, ctx());
+    var d = now(), month = C.monthOf(d);
+    holdEqualized(month);
+    var states = C.allStates(S.acts, month, d, ctx());
     var hist = getJSON('pet_history', []), prev = hist.length ? hist[hist.length - 1].mood : null;
     var r = C.petCompute(getJSON('pet', null), states, parseInt(S.settings.buffer_cents || '0', 10), d, idleDays(d), prev);
     putJSON('pet', r.pet); putJSON('periods', periods);
@@ -72,6 +74,28 @@
     cache = { now: d, month: month, states: states, pet: r, changedFrom: changed ? prev : undefined };
     return cache;
   }
+  /** Equalizing re-spreads one month's credits and is remembered per month: {month: {at, allot: {id: credits}, drained: {id: {name, short}}}}. The schedule is
+   * rebuilt from it whenever something (a sync, a pouch edit) put the usual numbers back, so the month stays equalized. */
+  function equalizedLog() { return getJSON('equalized', {}); }
+  function holdEqualized(month) {
+    var e = equalizedLog()[month]; if (!e) return;
+    Object.keys(e.allot).forEach(function (id) {
+      var a = actById(id), per = periods[C.periodKey(month, id)];
+      if (a && (!per || per.allotted !== e.allot[id])) C.buildPeriod(periods, month, a, true, e.allot[id]);
+    });
+  }
+  function equalizeMonth() {
+    var c = cache, res = C.equalize(c.states);
+    if (!res.moves.length) { notice = 'The pouches are already as even as the credits allow.'; render(); return; }
+    var log = equalizedLog(), prev = log[c.month] || { drained: {} }, drained = prev.drained;
+    res.moves.forEach(function (m) { if (m.drained && !drained[m.id]) drained[m.id] = { name: m.name, short: m.to - m.from }; });
+    log[c.month] = { at: C.iso(now()), allot: Object.assign({}, prev.allot, res.allot), drained: drained };
+    putJSON('equalized', log); touch(); afterChange();
+    notice = 'Equalized: ' + res.moves.map(function (m) { return m.name + ' ' + m.from + ' → ' + m.to; }).join(', ') + '. Alberich will remember which pouches ran dry.'; render();
+  }
+  /** Pouches that ran dry in a month that was equalized: how many credits they had to be given. Counted as demand when judging the Plan. */
+  function dryWhenEqualized(id, month) { var e = equalizedLog()[month], d = e && e.drained[id]; return d ? d.short : 0; }
+
   function afterChange() {
     var c = compute(), d = c.now;
     store.snapshot({ ts: d.getTime(), month: c.month, mood: C.moodKey(c.pet), tiles: c.states.map(function (s) {
@@ -140,7 +164,8 @@
     for (var k = 0; k < months; k++) {
       var m = C.shiftMonth(cache.month, -k);
       if (k && !periods[C.periodKey(m, act.id)]) continue;
-      var s = C.activityState(act, m, d, ctx()); out.push({ month: m, allotted: s.allotted, used: s.used, over: Math.max(0, s.used - s.allotted) });
+      var s = C.activityState(act, m, d, ctx()), dry = dryWhenEqualized(act.id, m);
+      out.push({ month: m, allotted: s.allotted, used: s.used, over: Math.max(0, s.used - s.allotted), dry: dry });
     }
     return out;
   }
@@ -214,18 +239,21 @@
     out.appendChild(tabs);
     if (notice) { out.appendChild(el('div', { class: 'notice', text: notice })); notice = ''; }
     if (tab === 'plan') {
-      var c = card('The plan, ' + cache.month, 'Each pouch has a number of credits for the month and a cost for one use. Credits unlock at the pace you set, and the pet judges you by how closely your spending follows them. When this phone is paired with your computer, pouches that follow a budget category get their credits from your statements.');
+      var c = card('The plan, ' + cache.month, 'Each pouch has a number of credits for the month and a cost for one use. Equalize moves this month's credit dollars from pouches with plenty left to ones that ran out; next month starts from the usual numbers, but Alberich remembers which pouches ran dry. Credits unlock at the pace you set, and the pet judges you by how closely your spending follows them. When this phone is paired with your computer, pouches that follow a budget category get their credits from your statements.');
       var rows = el('div', { class: 'prows' });
       cache.states.forEach(function (s) {
-        var a = s.activity, runs = overdrawHistory(a, 4).filter(function (o) { return o.over; });
+        var a = s.activity, hist = overdrawHistory(a, 4), runs = hist.filter(function (o) { return o.over; }), dries = hist.filter(function (o) { return o.dry && !o.over; });
         rows.appendChild(el('div', { class: 'prow' },
           el('div', { class: 'phead' }, el('span', { html: pxicon(a.icon, 22) }), el('a', { href: '#/purse', onclick: function (ev) { ev.preventDefault(); purseTab = a.id; render(); } }, el('strong', { text: a.name })),
             el('span', { class: 'pcr' }, el('strong', { text: String(a.creditsPerMonth) }), ' credit' + (a.creditsPerMonth !== 1 ? 's ' : ' '), el('span', { class: 'small muted', text: a.autoCredits ? 'from your computer' : 'by hand' }))),
           el('div', { class: 'small pline', text: (a.estimateCents ? C.money(a.estimateCents) : 'set a cost') + ' each · used ' + s.used + ' of ' + s.allotted + (s.from_statements ? ' (' + s.from_statements + ' from statements)' : '') }),
-          runs.length ? el('div', { class: 'small pline' }, el('span', { class: 'chip red', text: 'ran over' }), ' ' + runs.map(function (o) { return o.over + ' over in ' + o.month; }).join('; ') + '.') : null));
+          runs.length ? el('div', { class: 'small pline' }, el('span', { class: 'chip red', text: 'ran over' }), ' ' + runs.map(function (o) { return o.over + ' over in ' + o.month; }).join('; ') + '.') : null,
+          dries.length ? el('div', { class: 'small pline' }, el('span', { class: 'chip red', text: 'ran dry' }), ' ' + dries.map(function (o) { return o.month + ' (needed ' + o.dry + ' more when equalized)'; }).join('; ') + '.') : null));
       });
       if (!cache.states.length) rows.appendChild(el('p', { class: 'muted', text: 'No pouches yet. Add one with the plus tab.' }));
-      c.appendChild(rows); out.appendChild(c); out.appendChild(usesCard('plan'));
+      c.appendChild(rows);
+      if (cache.states.length > 1) c.appendChild(el('div', { class: 'row' }, el('button', { class: 'btn', type: 'button', onclick: equalizeMonth }, 'Equalize this month')));
+      out.appendChild(c); out.appendChild(usesCard('plan'));
     } else if (tab === 'new') out.appendChild(purseForm(null));
     else { var act = actById(tab); if (act) { out.appendChild(purseForm(act)); out.appendChild(usesCard(act.id)); } else { purseTab = 'plan'; return pursePage(); } }
     return out;
