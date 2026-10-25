@@ -61,12 +61,37 @@
 
   /** The frozen schedule for one pouch and month. periods is {key: {allotted, estimateCents, unlocks: [iso]}}; an existing one is kept unless replace. */
   function periodKey(month, id) { return month + '|' + id; }
-  function buildPeriod(periods, month, act, replace) {
-    var k = periodKey(month, act.id);
+  function buildPeriod(periods, month, act, replace, count) {
+    var k = periodKey(month, act.id), n = count == null ? act.creditsPerMonth : count;
     if (!replace && periods[k]) return periods[k];
-    var unlocks = computeUnlockTimes(month, act.creditsPerMonth, cadenceOf(act));
-    periods[k] = { allotted: act.creditsPerMonth, estimateCents: act.estimateCents, unlocks: unlocks.map(iso) };
+    var unlocks = computeUnlockTimes(month, n, cadenceOf(act));
+    periods[k] = { allotted: n, estimateCents: act.estimateCents, unlocks: unlocks.map(iso) };
     return periods[k];
+  }
+
+  /** Re-spread this month's credit dollars so every pouch is equally full. The month's total (credits x cost, summed) stays put and what was already used stays used;
+   * what is left is shared out so each pouch gets the same fraction of its own original allotment back (the full pouches give, the empty ones receive).
+   * states: this month's pouch standings. -> {allot: {id: new credits}, moves: [{id, name, from, to}]}; empty when there is nothing to move. */
+  function equalize(states) {
+    var live = states.filter(function (s) { return s.allotted > 0 && s.estimate_cents > 0; });
+    var pool = 0, used = 0;
+    live.forEach(function (s) { pool += s.allotted * s.estimate_cents; used += s.used * s.estimate_cents; });
+    var out = { allot: {}, moves: [] };
+    if (live.length < 2 || pool <= used) return out;
+    var f = (pool - used) / pool, left = pool, rows = live.map(function (s) {
+      var ideal = s.used + f * s.allotted, n = Math.max(s.used, Math.min(60, Math.floor(ideal)));
+      left -= n * s.estimate_cents;
+      return { s: s, n: n, frac: ideal - n };
+    });
+    rows.sort(function (a, b) { return (b.frac - a.frac) || (a.s.activity.sort - b.s.activity.sort); });
+    for (var i = 0, moved = true; moved && left > 0; i++) {   // hand the dollars rounding left over to the pouches closest to the next credit, while one still fits
+      moved = false;
+      rows.forEach(function (r) { if (r.n < 60 && r.s.estimate_cents <= left && r.frac > 0.0001) { r.n++; r.frac--; left -= r.s.estimate_cents; moved = true; } });
+      if (i > 60) break;
+    }
+    rows.forEach(function (r) { out.allot[r.s.activity.id] = r.n; if (r.n !== r.s.allotted) out.moves.push({ id: r.s.activity.id, name: r.s.activity.name, from: r.s.allotted, to: r.n, drained: r.s.remaining <= 0 }); });
+    if (!out.moves.length) out.allot = {};
+    return out;
   }
 
   /** ctx: {periods, logs (all logs), stmtUses(actId, month) -> [Date]}. -> the pouch's standing this month. */
@@ -282,7 +307,7 @@
   }
 
   var api = { iso: iso, parseIso: parseIso, monthOf: monthOf, shiftMonth: shiftMonth, monthBounds: monthBounds, computeUnlockTimes: computeUnlockTimes, classifyLogs: classifyLogs, cadenceOf: cadenceOf,
-    buildPeriod: buildPeriod, periodKey: periodKey, activityState: activityState, allStates: allStates, activeActs: activeActs, spendInputs: spendInputs, zone: zone, step: step, band: band, moodFor: moodFor,
+    buildPeriod: buildPeriod, equalize: equalize, periodKey: periodKey, activityState: activityState, allStates: allStates, activeActs: activeActs, spendInputs: spendInputs, zone: zone, step: step, band: band, moodFor: moodFor,
     petCompute: petCompute, petShock: petShock, nagStage: nagStage, nagText: nagText, unlockText: unlockText, buildSchedule: buildSchedule, mergePrefs: mergePrefs, inQuiet: inQuiet, afterQuiet: afterQuiet,
     moodKey: moodKey, sayingFor: sayingFor, fmtWhen: fmtWhen, tileView: tileView, money: money, toCents: toCents, uuid: uuid, CFG: CFG, ORDER: ORDER, NAG_AT: NAG_AT, NAG_REPEAT: NAG_REPEAT,
     MOOD_TEXT: MOOD_TEXT, MOOD_NOTE: MOOD_NOTE, ZONE_TEXT: ZONE_TEXT, STARTERS: STARTERS, DEFAULT_PREFS: DEFAULT_PREFS, TYPE_LABELS: TYPE_LABELS, NAG_COPY: NAG_COPY, UNLOCK_COPY: UNLOCK_COPY, DAY_MS: DAY_MS };
