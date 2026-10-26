@@ -383,9 +383,11 @@
   // ---------- start ----------
   function seed() {
     if (S.acts.length || S.settings.starter_seeded) return;
-    var t = C.iso(now());
+    // Starter pouches use a stable id and a sentinel (not "now") updatedAt: a reinstalled phone re-seeds blank starters, and this id/timestamp pair
+    // lets sync recognize them as the same pouch it already knows about and keep the real data instead of duplicating or clobbering it.
+    var t = cfg.demo ? C.iso(now()) : '2020-01-01T00:00:00Z';
     C.STARTERS.forEach(function (s, i) {
-      var a = { id: C.uuid(), name: s[0], icon: s[1], phrase: s[2], estimateCents: s[3], weight: s[4], creditsPerMonth: cfg.demo ? [4, 3, 1, 2, 1, 4, 1][i] : 0, cadence: { mode: 'even', time: '09:00', dows: [], notify: true }, sort: i, archived: false, autoCredits: false, updatedAt: t };
+      var a = { id: 'starter-' + s[1], name: s[0], icon: s[1], phrase: s[2], estimateCents: s[3], weight: s[4], creditsPerMonth: cfg.demo ? [4, 3, 1, 2, 1, 4, 1][i] : 0, cadence: { mode: 'even', time: '09:00', dows: [], notify: true }, sort: i, archived: false, autoCredits: false, updatedAt: t };
       S.acts.push(a); store.putAct(a);
     });
     put('starter_seeded', '1');

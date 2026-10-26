@@ -76,9 +76,12 @@ def seed_defaults(db: DB):
     if db.get_setting("starter_seeded") or db.val("SELECT COUNT(*) FROM activities", default=0):
         return
     now = clock.iso(clock.now())
+    # Stable id + a sentinel (not "now") updated_at: the phone seeds the same starters independently, and a reinstalled phone re-seeds them
+    # blank. Matching ids let sync recognize these as the same pouch instead of duplicating it, and the old timestamp lets any real data
+    # (here or on the phone) win over a freshly re-seeded blank one.
     for i, (n, ic, ph, est, w) in enumerate(STARTERS):
-        db.ex("""INSERT INTO activities(name,icon,phrase,estimate_cents,weight,credits_per_month,cadence,sort,created_at)
-                 VALUES(?,?,?,?,?,0,'{}',?,?)""", (n, ic, ph, est, w, i, now))
+        db.ex("""INSERT INTO activities(uuid,name,icon,phrase,estimate_cents,weight,credits_per_month,cadence,sort,created_at,updated_at)
+                 VALUES(?,?,?,?,?,?,0,'{}',?,?,?)""", (f"starter-{ic}", n, ic, ph, est, w, i, now, "2020-01-01T00:00:00Z"))
     db.set_setting("starter_seeded", "1")
 
 

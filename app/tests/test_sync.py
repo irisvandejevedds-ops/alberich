@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from finapp import auth, clock, credits, pairing, spending, sync, tokens
 from finapp.config import Config, set_config
 from finapp.db import DB, MIGRATIONS, open_db
-from finapp.main import create_app
+from finapp.main import STARTERS, create_app, seed_defaults
 
 PASS = "correct horse battery"
 A1, A2 = "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"
@@ -67,6 +67,17 @@ def test_a_phone_pouch_and_its_taps_merge_in_and_replays_change_nothing(db, cfg)
     assert db.val("SELECT COUNT(*) FROM activity_logs") == 1
     again = sync.handle(db, cfg, {"acts": [act()], "logs": [log()]}, NOW)
     assert again["accepted"] == 0 and again["stale"] == 2 and db.val("SELECT COUNT(*) FROM activity_logs") == 1
+
+
+def test_a_reinstalled_phones_blank_starters_merge_into_the_computers_without_duplicating(db, cfg):
+    seed_defaults(db)  # the computer seeded its own 7 starters before ever pairing
+    assert db.val("SELECT COUNT(*) FROM activities") == 7
+    db.ex("UPDATE activities SET credits_per_month=3, updated_at=? WHERE uuid='starter-toy'", ("2026-09-01T00:00:00Z",))  # real use since
+    phone_acts = [act(uid=f"starter-{ic}", name=n, credits_n=0, est=est, updated="2020-01-01T00:00:00Z", icon=ic, phrase=ph, weight=w, sort=i)
+                  for i, (n, ic, ph, est, w) in enumerate(STARTERS)]  # the phone, reinstalled, re-seeding the same starters blank
+    sync.handle(db, cfg, {"acts": phone_acts, "logs": []}, NOW)
+    assert db.val("SELECT COUNT(*) FROM activities") == 7, "no duplicate pouches from independently-seeded starters"
+    assert db.one("SELECT credits_per_month FROM activities WHERE uuid='starter-toy'")["credits_per_month"] == 3, "real data was not clobbered by the blank reseed"
 
 
 def test_the_later_edit_wins_and_changing_credits_rebuilds_the_schedule(db, cfg):
