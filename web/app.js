@@ -239,7 +239,8 @@
     out.appendChild(tabs);
     if (notice) { out.appendChild(el('div', { class: 'notice', text: notice })); notice = ''; }
     if (tab === 'plan') {
-      var c = card('The plan, ' + cache.month, 'Each pouch has a number of credits for the month and a cost for one use. Equalize moves this month's credit dollars from pouches with plenty left to ones that ran out; next month starts from the usual numbers, but Alberich remembers which pouches ran dry. Credits unlock at the pace you set, and the pet judges you by how closely your spending follows them. When this phone is paired with your computer, pouches that follow a budget category get their credits from your statements.');
+      var c = card('The plan, ' + cache.month, 'Each pouch has a number of credits for the month and a cost for one use. Equalize moves this month\'s credit dollars from pouches with plenty left to ones that ran out; next month starts from the usual numbers, but Alberich remembers which pouches ran dry. Credits unlock at the pace you set, and the pet judges you by how closely your spending follows them. When this phone is paired with your computer, pouches that follow a budget category get their credits from your statements.');
+      if (cache.states.length > 1) c.appendChild(el('div', { class: 'row' }, el('button', { class: 'btn', type: 'button', onclick: equalizeMonth }, 'Equalize this month')));
       var rows = el('div', { class: 'prows' });
       cache.states.forEach(function (s) {
         var a = s.activity, hist = overdrawHistory(a, 4), runs = hist.filter(function (o) { return o.over; }), dries = hist.filter(function (o) { return o.dry && !o.over; });
@@ -252,7 +253,6 @@
       });
       if (!cache.states.length) rows.appendChild(el('p', { class: 'muted', text: 'No pouches yet. Add one with the plus tab.' }));
       c.appendChild(rows);
-      if (cache.states.length > 1) c.appendChild(el('div', { class: 'row' }, el('button', { class: 'btn', type: 'button', onclick: equalizeMonth }, 'Equalize this month')));
       out.appendChild(c); out.appendChild(usesCard('plan'));
     } else if (tab === 'new') out.appendChild(purseForm(null));
     else { var act = actById(tab); if (act) { out.appendChild(purseForm(act)); out.appendChild(usesCard(act.id)); } else { purseTab = 'plan'; return pursePage(); } }
